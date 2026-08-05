@@ -267,4 +267,29 @@ describe('transformSpec', () => {
       description: 'Returns a list of all pets in the store',
     });
   });
+
+  it('should generate records for default responses (mapped to 500)', () => {
+    const spec = {
+      paths: {
+        '/pets': {
+          get: {
+            responses: {
+              '200': { description: 'OK', content: { 'application/json': { example: [] } } },
+              default: {
+                description: 'Error',
+                content: { 'application/json': { schema: { type: 'object' } } },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const records = transformSpec(spec);
+    expect(records).toHaveLength(2);
+    expect(records[0].statusCode).toBe(200);
+    expect(records[1].statusCode).toBe(500); // default mapped to 500
+    expect(records[0].path).toBe('/pets');
+    expect(records[1].path).toBe('/pets');
+  });
 });

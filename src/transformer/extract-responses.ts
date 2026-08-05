@@ -66,6 +66,8 @@ function extractMediaTypeContent(mediaType: Record<string, unknown>): {
  * Extract all responses from an operation
  * @param operation - OpenAPI operation object
  * @returns Array of extracted responses (one per status code)
+ *
+ * Note: "default" responses are mapped to status code 500 to represent catch-all/error handling
  */
 export function extractOperationResponses(
   operation: Record<string, unknown>,
@@ -76,8 +78,17 @@ export function extractOperationResponses(
   if (!responsesObj) return responses;
 
   Object.entries(responsesObj).forEach(([statusCode, response]) => {
-    // Skip non-numeric status codes and default
-    if (!/^\d{3}$/.test(statusCode) || statusCode === 'default') return;
+    // Convert "default" to 500 (catch-all error response)
+    // Skip other non-numeric status codes (4XX, 5XX patterns, etc.)
+    let numericStatusCode: number;
+
+    if (statusCode === 'default') {
+      numericStatusCode = 500;
+    } else if (!/^\d{3}$/.test(statusCode)) {
+      return; // Skip pattern-based status codes
+    } else {
+      numericStatusCode = parseInt(statusCode, 10);
+    }
 
     const responseObj = response as Record<string, unknown>;
     const content = responseObj.content as Record<string, unknown> | undefined;
@@ -87,7 +98,7 @@ export function extractOperationResponses(
     const { example, schema } = mediaType ? extractMediaTypeContent(mediaType) : {};
 
     responses.push({
-      statusCode: parseInt(statusCode, 10),
+      statusCode: numericStatusCode,
       contentType,
       example,
       schema,
