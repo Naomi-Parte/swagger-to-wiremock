@@ -57,9 +57,10 @@ export async function parseOpenAPISpec(
   if (verbose) console.log('[Parser] Dereferencing $ref pointers...');
 
   try {
-    // Use SwaggerParser with options
+    // Use SwaggerParser to dereference the spec
+    // Pass the spec object (not the file path) to dereference, with the file path as base URL
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const dereferenced = await (SwaggerParser as any).dereference(filePath, {
+    const dereferenced = await (SwaggerParser as any).dereference(spec, {
       resolve: {
         http: allowRemote,
         file: true,
