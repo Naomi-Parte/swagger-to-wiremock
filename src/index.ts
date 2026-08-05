@@ -8,3 +8,9 @@ export type { WireMockRequest } from './types/wiremock-request.js';
 export type { WireMockResponse } from './types/wiremock-response.js';
 export type { OperationRecord } from './types/operation-record.js';
 export type { TransformContext } from './types/transform-context.js';
+
+export { parseOpenAPISpec } from './parser/index.js';
+export type { ParseOptions } from './parser/index.js';
+
+export { ParserError } from './errors/parser-error.js';
+export { BaseError } from './errors/base-error.js';
