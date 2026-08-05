@@ -12,5 +12,7 @@ export type { TransformContext } from './types/transform-context.js';
 export { parseOpenAPISpec } from './parser/index.js';
 export type { ParseOptions } from './parser/index.js';
 
+export { transformSpec } from './transformer/index.js';
+
 export { ParserError } from './errors/parser-error.js';
 export { BaseError } from './errors/base-error.js';
