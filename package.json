@@ -1,0 +1,52 @@
+{
+  "name": "openapi-to-wiremock",
+  "version": "0.0.1",
+  "description": "Convert OpenAPI 3.0/3.1 specs to native WireMock JSON stub mappings",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "bin": {
+    "openapi-to-wiremock": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "build:watch": "tsup --watch",
+    "dev": "tsup --watch --onSuccess 'node dist/cli.js'",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "lint": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@apidevtools/swagger-parser": "^10.1.0",
+    "@faker-js/faker": "^9.0.0",
+    "commander": "^12.0.0",
+    "js-yaml": "^4.1.0",
+    "json-schema-faker": "^0.5.6"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.14.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "openapi",
+    "wiremock",
+    "mocking",
+    "api",
+    "stub"
+  ],
+  "author": "",
+  "license": "MIT"
+}
