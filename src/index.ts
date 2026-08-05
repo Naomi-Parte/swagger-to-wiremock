@@ -14,5 +14,9 @@ export type { ParseOptions } from './parser/index.js';
 
 export { transformSpec } from './transformer/index.js';
 
+export { generateURLPattern } from './url-patterns/index.js';
+export type { URLPatternResult } from './url-patterns/index.js';
+export { getPathParamPattern, PATH_PARAM_PATTERNS } from './url-patterns/path-param-patterns.js';
+
 export { ParserError } from './errors/parser-error.js';
 export { BaseError } from './errors/base-error.js';
