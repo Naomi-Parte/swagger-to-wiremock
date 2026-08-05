@@ -18,8 +18,8 @@ export interface OperationRecord {
   /** HTTP method (lowercase: get, post, put, delete, patch) */
   method: string;
 
-  /** HTTP status code for this response (e.g., 200, 201, 404) */
-  statusCode: number;
+  /** HTTP status code for this response (e.g., 200, 201, 404, or "default") */
+  statusCode: number | string;
 
   /** Operation summary from OpenAPI spec (optional) */
   summary?: string;

@@ -288,7 +288,7 @@ describe('transformSpec', () => {
     const records = transformSpec(spec);
     expect(records).toHaveLength(2);
     expect(records[0].statusCode).toBe(200);
-    expect(records[1].statusCode).toBe(500); // default mapped to 500
+    expect(records[1].statusCode).toBe('default'); // default preserved as string
     expect(records[0].path).toBe('/pets');
     expect(records[1].path).toBe('/pets');
   });

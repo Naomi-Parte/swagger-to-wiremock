@@ -175,7 +175,7 @@ describe('extractOperationResponses', () => {
     });
   });
 
-  it('should skip non-numeric status codes, but include "default" as 500', () => {
+  it('should skip non-numeric status codes, but include "default" as string', () => {
     const operation = {
       responses: {
         '200': { description: 'OK', content: { 'application/json': {} } },
@@ -185,12 +185,12 @@ describe('extractOperationResponses', () => {
     };
 
     const responses = extractOperationResponses(operation);
-    expect(responses).toHaveLength(2); // 200 and default (→ 500)
+    expect(responses).toHaveLength(2); // 200 and default
     expect(responses[0].statusCode).toBe(200);
-    expect(responses[1].statusCode).toBe(500); // default mapped to 500
+    expect(responses[1].statusCode).toBe('default'); // default as string, not converted
   });
 
-  it('should handle "default" responses mapped to 500', () => {
+  it('should handle "default" responses as literal string', () => {
     const operation = {
       responses: {
         '200': {
@@ -207,6 +207,6 @@ describe('extractOperationResponses', () => {
     const responses = extractOperationResponses(operation);
     expect(responses).toHaveLength(2);
     expect(responses[0].statusCode).toBe(200);
-    expect(responses[1].statusCode).toBe(500); // default mapped to 500
+    expect(responses[1].statusCode).toBe('default'); // default preserved as string
   });
 });
