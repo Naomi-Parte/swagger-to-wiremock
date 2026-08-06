@@ -19,6 +19,9 @@ export type { URLPatternResult } from './url-patterns/index.js';
 export { getPathParamPattern, PATH_PARAM_PATTERNS } from './url-patterns/path-param-patterns.js';
 
 export { generateResponseBody } from './generator/response-builder.js';
+export { generateMappings } from './generator/index.js';
+export { writeStubs } from './writer/index.js';
+export type { WriteOptions, WriteResult } from './writer/index.js';
 
 export { ParserError } from './errors/parser-error.js';
 export { BaseError } from './errors/base-error.js';
