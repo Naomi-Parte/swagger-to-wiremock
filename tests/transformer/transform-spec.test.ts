@@ -12,6 +12,7 @@ describe('transformSpec', () => {
         '/pets': {
           get: {
             summary: 'List pets',
+            operationId: 'listPets',
             responses: {
               '200': {
                 description: 'Success',
@@ -34,6 +35,7 @@ describe('transformSpec', () => {
       method: 'get',
       statusCode: 200,
       summary: 'List pets',
+      operationId: 'listPets',
       pathParams: [],
       queryParams: [],
       contentType: 'application/json',
@@ -265,6 +267,26 @@ describe('transformSpec', () => {
     expect(records[0]).toMatchObject({
       summary: 'List all pets',
       description: 'Returns a list of all pets in the store',
+    });
+  });
+
+  it('should include operationId when present', () => {
+    const spec = {
+      paths: {
+        '/pets': {
+          get: {
+            operationId: 'listPets',
+            responses: {
+              '200': { description: 'OK', content: { 'application/json': {} } },
+            },
+          },
+        },
+      },
+    };
+
+    const records = transformSpec(spec);
+    expect(records[0]).toMatchObject({
+      operationId: 'listPets',
     });
   });
 

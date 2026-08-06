@@ -87,6 +87,7 @@ export function transformSpec(spec: Record<string, unknown>): OperationRecord[] 
           method: method.toLowerCase(),
           statusCode,
           summary: operation.summary as string | undefined,
+          operationId: operation.operationId as string | undefined,
           description: operation.description as string | undefined,
           pathParams,
           queryParams,
