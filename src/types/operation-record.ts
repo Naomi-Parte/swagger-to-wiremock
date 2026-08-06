@@ -24,6 +24,9 @@ export interface OperationRecord {
   /** Operation summary from OpenAPI spec (optional) */
   summary?: string;
 
+  /** Operation identifier from OpenAPI spec (optional) */
+  operationId?: string;
+
   /** Operation description from OpenAPI spec (optional) */
   description?: string;
 
