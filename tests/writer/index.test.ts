@@ -245,7 +245,7 @@ describe('writeStubs', () => {
     expect(body1).toEqual(normalizeBodyForAssert(generateResponseBody(records[0], 42)));
   });
 
-  it('split mode (default) writes per-status-class folders plus an all/ folder', async () => {
+  it('split mode (default) writes per-status-class folders, no all/ folder', async () => {
     const outputDir = createTmpDirPath('split-default');
     const mappings = sampleMappings();
     const records = sampleRecords();
@@ -255,21 +255,8 @@ describe('writeStubs', () => {
     await expect(access(join(outputDir, '2xx', 'mappings', 'get-pets-200.json'))).resolves.toBeUndefined();
     await expect(access(join(outputDir, '2xx', '__files', 'get-pets-200.json'))).resolves.toBeUndefined();
     await expect(access(join(outputDir, '2xx', 'mappings', 'post-pets-201.json'))).resolves.toBeUndefined();
-    await expect(access(join(outputDir, 'all', 'mappings', 'get-pets-200.json'))).resolves.toBeUndefined();
-    await expect(access(join(outputDir, 'all', 'mappings', 'post-pets-201.json'))).resolves.toBeUndefined();
-
-    expect(result.folderCounts).toEqual({ '2xx': 2, all: 2 });
-  });
-
-  it('split mode with includeAllFolder: false omits the all/ folder', async () => {
-    const outputDir = createTmpDirPath('split-no-all');
-    const mappings = sampleMappings();
-    const records = sampleRecords();
-
-    const result = await writeStubs(mappings, records, { outputDir, includeAllFolder: false });
-
-    await expect(access(join(outputDir, '2xx', 'mappings', 'get-pets-200.json'))).resolves.toBeUndefined();
     await expect(access(join(outputDir, 'all'))).rejects.toThrow();
+
     expect(result.folderCounts).toEqual({ '2xx': 2 });
   });
 
@@ -283,11 +270,7 @@ describe('writeStubs', () => {
     const body2xx = JSON.parse(
       await readFile(join(outputDir, '2xx', '__files', 'get-pets-200.json'), 'utf8'),
     ) as Record<string, string>;
-    const bodyAll = JSON.parse(
-      await readFile(join(outputDir, 'all', '__files', 'get-pets-200.json'), 'utf8'),
-    ) as Record<string, string>;
 
     expect(body2xx).toEqual({ TODO: 'Add response body for GET /pets → 200' });
-    expect(bodyAll).toEqual({ TODO: 'Add response body for GET /pets → 200' });
   });
 });

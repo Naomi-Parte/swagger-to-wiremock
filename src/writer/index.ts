@@ -24,8 +24,6 @@ export interface WriteOptions {
   empty?: boolean;
   /** Write everything to a single mappings/__files folder pair instead of splitting by status class (default: false) */
   flat?: boolean;
-  /** When split (not flat), also write an `all/` folder containing every mapping (default: true) */
-  includeAllFolder?: boolean;
 }
 
 export interface WriteResult {
@@ -35,7 +33,7 @@ export interface WriteResult {
   bodyFiles: string[];
   /** Total bytes written */
   totalBytes: number;
-  /** Number of stubs written per folder (e.g. { "2xx": 3, "5xx": 3, "all": 6 }). Only set in split mode. */
+  /** Number of stubs written per folder (e.g. { "2xx": 3, "5xx": 3 }). Only set in split mode. */
   folderCounts?: Record<string, number>;
 }
 
@@ -121,9 +119,8 @@ async function writeItemsToDir(
  * Write WireMock mappings and body files to disk.
  *
  * By default, output is split into per-status-class folders (`2xx/`, `4xx/`, `5xx/`, ...)
- * plus an `all/` folder containing every mapping, so each folder is independently loadable
- * by WireMock. Pass `flat: true` to write everything into a single `mappings/`/`__files/`
- * pair instead (the pre-split behaviour).
+ * so each folder is independently loadable by WireMock. Pass `flat: true` to write
+ * everything into a single `mappings/`/`__files/` pair instead (the pre-split behaviour).
  * @param mappings - Generated WireMock mappings
  * @param records - Source operation records, index-aligned with mappings
  * @param options - Writer options
@@ -140,7 +137,6 @@ export async function writeStubs(
   const seed = options.seed ?? 42;
   const empty = options.empty ?? false;
   const flat = options.flat ?? false;
-  const includeAllFolder = options.includeAllFolder ?? true;
 
   if (clean && !dryRun) {
     await rm(outputDir, { recursive: true, force: true });
@@ -193,17 +189,6 @@ export async function writeStubs(
     bodyFiles.push(...result.bodyFiles);
     totalBytes += result.totalBytes;
     folderCounts[cls] = classItems.length;
-  }
-
-  if (includeAllFolder) {
-    const mappingsDir = join(outputDir, 'all', 'mappings');
-    const filesDir = join(outputDir, 'all', '__files');
-    const result = await writeItemsToDir(items, mappingsDir, filesDir, dryRun, empty, seed);
-
-    mappingFiles.push(...result.mappingFiles);
-    bodyFiles.push(...result.bodyFiles);
-    totalBytes += result.totalBytes;
-    folderCounts.all = items.length;
   }
 
   return {

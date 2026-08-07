@@ -44,10 +44,11 @@ describe('cli convert', () => {
     expect(result.stdout).toContain('✅ Generated');
     expect(result.stdout).toContain('Folders:');
 
-    const mappingFiles = await readdir(join(outputDir, 'all', 'mappings'));
-    const bodyFiles = await readdir(join(outputDir, 'all', '__files'));
+    const mappingFiles = await readdir(join(outputDir, '2xx', 'mappings'));
+    const bodyFiles = await readdir(join(outputDir, '2xx', '__files'));
     expect(mappingFiles.length).toBeGreaterThan(0);
     expect(bodyFiles.length).toBeGreaterThan(0);
+    await expect(access(join(outputDir, 'all'))).rejects.toThrow();
   });
 
   it('--flat writes a single mappings/__files folder', async () => {
@@ -78,7 +79,7 @@ describe('cli convert', () => {
     const result = runCli(['convert', SPEC_PATH, '-o', outputDir]);
 
     expect(result.status).toBe(0);
-    const mappingFiles = await readdir(join(outputDir, 'all', 'mappings'));
+    const mappingFiles = await readdir(join(outputDir, '2xx', 'mappings'));
     expect(mappingFiles.length).toBeGreaterThan(0);
   });
 
@@ -100,12 +101,12 @@ describe('cli convert', () => {
     expect(resultA.status).toBe(0);
     expect(resultB.status).toBe(0);
 
-    const mappingsA = (await readdir(join(outputDirA, 'all', 'mappings'))).sort();
-    const mappingsB = (await readdir(join(outputDirB, 'all', 'mappings'))).sort();
+    const mappingsA = (await readdir(join(outputDirA, '2xx', 'mappings'))).sort();
+    const mappingsB = (await readdir(join(outputDirB, '2xx', 'mappings'))).sort();
     expect(mappingsA).toEqual(mappingsB);
 
-    const bodiesA = (await readdir(join(outputDirA, 'all', '__files'))).sort();
-    const bodiesB = (await readdir(join(outputDirB, 'all', '__files'))).sort();
+    const bodiesA = (await readdir(join(outputDirA, '2xx', '__files'))).sort();
+    const bodiesB = (await readdir(join(outputDirB, '2xx', '__files'))).sort();
     expect(bodiesA).toEqual(bodiesB);
   });
 
@@ -188,10 +189,11 @@ describe('cli convert', () => {
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('Empty templates');
 
-    const files = await readdir(join(outputDir, 'all', '__files'));
+    const files = await readdir(join(outputDir, '2xx', '__files'));
     const firstBody = JSON.parse(
-      await readFile(join(outputDir, 'all', '__files', files[0]!), 'utf8'),
+      await readFile(join(outputDir, '2xx', '__files', files[0]!), 'utf8'),
     ) as Record<string, string>;
     expect(firstBody.TODO).toContain('Add response body for');
+    await expect(access(join(outputDir, 'all'))).rejects.toThrow();
   });
 });

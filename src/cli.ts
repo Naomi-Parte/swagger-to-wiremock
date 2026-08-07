@@ -46,8 +46,8 @@ interface ConvertOptions {
 
 /**
  * Format per-folder stub counts for the split-mode summary line.
- * @param folderCounts - Stub counts keyed by folder name (e.g. "2xx", "all")
- * @returns Formatted string, e.g. "2xx/ (3 stubs), 5xx/ (3 stubs), all/ (6 stubs)"
+ * @param folderCounts - Stub counts keyed by folder name (e.g. "2xx")
+ * @returns Formatted string, e.g. "2xx/ (3 stubs), 5xx/ (3 stubs)"
  */
 function formatFolderSummary(folderCounts: Record<string, number>): string {
   const classOrder = ['1xx', '2xx', '3xx', '4xx', '5xx'];
@@ -57,10 +57,6 @@ function formatFolderSummary(folderCounts: Record<string, number>): string {
     if (folderCounts[cls] !== undefined) {
       parts.push(`${cls}/ (${folderCounts[cls]} stubs)`);
     }
-  }
-
-  if (folderCounts.all !== undefined) {
-    parts.push(`all/ (${folderCounts.all} stubs)`);
   }
 
   return parts.join(', ');
@@ -171,7 +167,6 @@ program
 
       // Step 4: Write to disk
       log('[info] Writing files...');
-      const includeAllFolder = !options.status;
       const result = await writeStubs(mappings, filteredRecords, {
         outputDir: options.output,
         clean: options.clean ?? true,
@@ -179,7 +174,6 @@ program
         seed,
         empty: options.empty ?? false,
         flat: options.flat ?? false,
-        includeAllFolder,
       });
 
       // Summary
