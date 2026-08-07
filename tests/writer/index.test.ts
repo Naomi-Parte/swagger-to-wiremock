@@ -182,4 +182,66 @@ describe('writeStubs', () => {
     expect(mappingsDirStats.isDirectory()).toBe(true);
     expect(filesDirStats.isDirectory()).toBe(true);
   });
+
+  it('--empty writes TODO placeholder bodies', async () => {
+    const outputDir = createTmpDirPath('empty-flag');
+    const mappings = sampleMappings();
+    const records = sampleRecords();
+
+    await writeStubs(mappings, records, { outputDir, empty: true });
+
+    const body1 = JSON.parse(
+      await readFile(join(outputDir, '__files', 'get-pets-200.json'), 'utf8'),
+    ) as Record<string, string>;
+    const body2 = JSON.parse(
+      await readFile(join(outputDir, '__files', 'post-pets-201.json'), 'utf8'),
+    ) as Record<string, string>;
+
+    expect(body1).toEqual({ TODO: 'Add response body for GET /pets → 200' });
+    expect(body2).toEqual({ TODO: 'Add response body for POST /pets → 201' });
+  });
+
+  it('--empty still writes full mappings', async () => {
+    const outputDir = createTmpDirPath('empty-flag-mappings');
+    const mappings = sampleMappings();
+    const records = sampleRecords();
+
+    await writeStubs(mappings, records, { outputDir, empty: true });
+
+    const mappingContent = JSON.parse(
+      await readFile(join(outputDir, 'mappings', 'get-pets-200.json'), 'utf8'),
+    ) as WireMockMapping;
+
+    expect(mappingContent).toEqual(mappings[0]);
+    expect(mappingContent.request).toEqual({ method: 'GET', urlPathPattern: '/pets' });
+    expect(mappingContent.response.status).toBe(200);
+  });
+
+  it('--empty with a filtered record subset combines correctly', async () => {
+    const outputDir = createTmpDirPath('empty-flag-filtered');
+    const mappings = sampleMappings().slice(0, 1);
+    const records = sampleRecords().slice(0, 1);
+
+    const result = await writeStubs(mappings, records, { outputDir, empty: true });
+
+    expect(result.mappingFiles).toHaveLength(1);
+    expect(result.bodyFiles).toHaveLength(1);
+
+    const body = JSON.parse(
+      await readFile(join(outputDir, '__files', 'get-pets-200.json'), 'utf8'),
+    ) as Record<string, string>;
+    expect(body).toEqual({ TODO: 'Add response body for GET /pets → 200' });
+  });
+
+  it('default (no --empty) still generates real bodies', async () => {
+    const outputDir = createTmpDirPath('no-empty-flag');
+    const mappings = sampleMappings();
+    const records = sampleRecords();
+
+    await writeStubs(mappings, records, { outputDir });
+
+    const body1 = JSON.parse(await readFile(join(outputDir, '__files', 'get-pets-200.json'), 'utf8')) as unknown;
+    expect(body1).not.toEqual({ TODO: expect.any(String) as unknown });
+    expect(body1).toEqual(normalizeBodyForAssert(generateResponseBody(records[0], 42)));
+  });
 });

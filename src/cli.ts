@@ -26,6 +26,8 @@ Examples:
   $ openapi-to-wiremock convert ./api.yaml --status 2xx        # Only success responses
   $ openapi-to-wiremock convert ./api.yaml --status 4xx,5xx    # Only error responses
   $ openapi-to-wiremock convert ./api.yaml --status 400,404    # Specific status codes
+  $ openapi-to-wiremock convert ./api.yaml --empty             # Skeleton with TODO bodies
+  $ openapi-to-wiremock convert ./api.yaml --empty --status 400,401  # Skeleton for specific codes
 `;
 
 interface ConvertOptions {
@@ -37,6 +39,7 @@ interface ConvertOptions {
   dryRun?: boolean;
   helpExamples?: boolean;
   status?: string;
+  empty?: boolean;
 }
 
 /**
@@ -74,6 +77,7 @@ program
   .option('--no-clean', 'Do not remove output directory before writing')
   .option('--help-examples', 'Show usage examples')
   .option('--status <codes>', 'Filter by status code: 2xx, 4xx, 5xx, or specific codes (comma-separated)')
+  .option('--empty', 'Generate skeleton stubs with TODO placeholder response bodies')
   .action(async (input: string, options: ConvertOptions) => {
     if (options.helpExamples) {
       console.log(EXAMPLES);
@@ -147,6 +151,7 @@ program
         clean: options.clean ?? true,
         dryRun: options.dryRun ?? false,
         seed,
+        empty: options.empty ?? false,
       });
 
       // Summary
@@ -156,6 +161,8 @@ program
         console.log(`   ${(result.totalBytes / 1024).toFixed(1)} KB total`);
         if (isPlaceholderMode) {
           console.log('   ℹ️  Placeholder body files created — edit __files/*.json with your custom responses');
+        } else if (options.empty) {
+          console.log('   ℹ️  Empty templates — populate __files/*.json with your responses');
         }
       }
 

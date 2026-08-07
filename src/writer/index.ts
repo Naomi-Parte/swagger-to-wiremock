@@ -19,6 +19,8 @@ export interface WriteOptions {
   dryRun?: boolean;
   /** Seed used for deterministic response body generation (default: 42) */
   seed?: number;
+  /** Write TODO placeholder response bodies instead of real ones (default: false) */
+  empty?: boolean;
 }
 
 export interface WriteResult {
@@ -84,9 +86,13 @@ export async function writeStubs(
     const bodyPath = join(filesDir, item.bodyFileName);
 
     const mappingContent = `${JSON.stringify(item.mapping, null, 2)}\n`;
-    const body = item.record.responseSchema || item.record.responseExample
-      ? generateResponseBody(item.record, seed)
-      : createPlaceholderBody(item.record.method, item.record.path, Number(item.record.statusCode));
+    const body = options.empty
+      ? {
+          TODO: `Add response body for ${item.record.method.toUpperCase()} ${item.record.path} → ${item.record.statusCode}`,
+        }
+      : item.record.responseSchema || item.record.responseExample
+        ? generateResponseBody(item.record, seed)
+        : createPlaceholderBody(item.record.method, item.record.path, Number(item.record.statusCode));
     const bodyContent = typeof body === 'string' ? body : `${JSON.stringify(body, null, 2)}\n`;
 
     mappingFiles.push(mappingPath);
