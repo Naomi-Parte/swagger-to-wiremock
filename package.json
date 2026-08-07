@@ -1,7 +1,7 @@
 {
   "name": "openapi-to-wiremock",
-  "version": "0.0.1",
-  "description": "Convert OpenAPI 3.0/3.1 specs to native WireMock JSON stub mappings",
+  "version": "0.1.0",
+  "description": "Convert OpenAPI 3.0 specs into native WireMock JSON stub mappings — offline, deterministic, zero config",
   "type": "module",
   "main": "./dist/index.js",
   "exports": {
@@ -13,6 +13,12 @@
   "bin": {
     "openapi-to-wiremock": "./dist/cli.js"
   },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "tsup",
     "build:watch": "tsup --watch",
@@ -21,7 +27,8 @@
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
     "lint": "tsc --noEmit",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run lint && npm run test:run && npm run build"
   },
   "dependencies": {
     "@apidevtools/swagger-parser": "^10.1.0",
@@ -47,6 +54,15 @@
     "api",
     "stub"
   ],
-  "author": "",
-  "license": "MIT"
+  "author": "Naomi Parte",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/naomi-parte/openapi-to-wiremock"
+  },
+  "homepage": "https://github.com/naomi-parte/openapi-to-wiremock#readme",
+  "bugs": {
+    "url": "https://github.com/naomi-parte/openapi-to-wiremock/issues"
+  }
 }
+
