@@ -28,3 +28,8 @@ export { BaseError } from './errors/base-error.js';
 
 export { parseStatusFilter, filterByStatus, statusMatchesFilter } from './filters/status-filter.js';
 export type { StatusFilter } from './filters/status-filter.js';
+export {
+  synthesisePlaceholderRecords,
+  extractSpecificCodes,
+  createPlaceholderBody,
+} from './filters/placeholder-generator.js';

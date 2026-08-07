@@ -12,6 +12,7 @@ import { generateMappings } from './generator/index.js';
 import { writeStubs } from './writer/index.js';
 import { ParserError } from './errors/parser-error.js';
 import { parseStatusFilter, filterByStatus } from './filters/status-filter.js';
+import { synthesisePlaceholderRecords, extractSpecificCodes } from './filters/placeholder-generator.js';
 
 const version = '0.0.1';
 
@@ -111,13 +112,26 @@ program
 
       // Step 2.5: Filter by status (if --status provided)
       let filteredRecords = records;
+      let isPlaceholderMode = false;
       if (options.status) {
         const filters = parseStatusFilter(options.status);
         filteredRecords = filterByStatus(records, filters);
         log(`[info] Status filter: ${options.status} → ${filteredRecords.length}/${records.length} records`);
+
         if (filteredRecords.length === 0) {
-          console.warn(`⚠️ No operations match status filter "${options.status}"`);
-          process.exit(0);
+          const specificCodes = extractSpecificCodes(filters);
+
+          if (specificCodes.length > 0) {
+            log(
+              `[info] Status ${options.status} not defined in spec — generating placeholders for all endpoints`,
+            );
+            filteredRecords = synthesisePlaceholderRecords(records, specificCodes);
+            log(`[info] ${filteredRecords.length} placeholder mappings generated`);
+            isPlaceholderMode = true;
+          } else {
+            console.warn(`⚠️ No operations match status filter "${options.status}"`);
+            process.exit(0);
+          }
         }
       }
 
@@ -140,6 +154,9 @@ program
         console.log(`✅ Generated ${result.mappingFiles.length} mappings → ${options.output}`);
         console.log(`   ${result.bodyFiles.length} response body files`);
         console.log(`   ${(result.totalBytes / 1024).toFixed(1)} KB total`);
+        if (isPlaceholderMode) {
+          console.log('   ℹ️  Placeholder body files created — edit __files/*.json with your custom responses');
+        }
       }
 
       process.exit(0);

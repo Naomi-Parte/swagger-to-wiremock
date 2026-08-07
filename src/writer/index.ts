@@ -8,6 +8,7 @@ import { join } from 'path';
 import type { WireMockMapping } from '../types/wiremock-mapping.js';
 import type { OperationRecord } from '../types/operation-record.js';
 import { generateResponseBody } from '../generator/response-builder.js';
+import { createPlaceholderBody } from '../filters/placeholder-generator.js';
 
 export interface WriteOptions {
   /** Output root directory (default: './wiremock') */
@@ -83,7 +84,9 @@ export async function writeStubs(
     const bodyPath = join(filesDir, item.bodyFileName);
 
     const mappingContent = `${JSON.stringify(item.mapping, null, 2)}\n`;
-    const body = generateResponseBody(item.record, seed);
+    const body = item.record.responseSchema || item.record.responseExample
+      ? generateResponseBody(item.record, seed)
+      : createPlaceholderBody(item.record.method, item.record.path, Number(item.record.statusCode));
     const bodyContent = typeof body === 'string' ? body : `${JSON.stringify(body, null, 2)}\n`;
 
     mappingFiles.push(mappingPath);

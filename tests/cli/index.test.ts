@@ -141,4 +141,18 @@ describe('cli convert', () => {
 
     expect(result.status).toBe(1);
   });
+
+  it('--status 400 generates placeholder mappings for all endpoints', async () => {
+    const outputDir = createTmpDirPath('status-placeholder');
+    const result = runCli(['convert', SPEC_PATH, '-o', outputDir, '--status', '400', '-v']);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('generating placeholders for all endpoints');
+    expect(result.stdout).toContain('Placeholder body files created');
+
+    const mappingFiles = await readdir(join(outputDir, 'mappings'));
+    const bodyFiles = await readdir(join(outputDir, '__files'));
+    expect(mappingFiles).toHaveLength(3);
+    expect(bodyFiles).toHaveLength(3);
+  });
 });
