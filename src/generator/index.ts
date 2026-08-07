@@ -9,13 +9,18 @@ import type { WireMockMapping } from '../types/wiremock-mapping.js';
 import type { WireMockRequest } from '../types/wiremock-request.js';
 import type { WireMockResponse } from '../types/wiremock-response.js';
 import { generateURLPattern } from '../url-patterns/index.js';
+import { createSeededRandom } from './seeded-random.js';
 
 /**
  * Generate WireMock mappings from operation records.
  * @param records - Operation records to convert
+ * @param seed - Optional numeric seed. When provided, mapping `id` values are generated
+ *               deterministically; when omitted, ids are generated using `crypto.randomBytes`.
  * @returns WireMock mappings
  */
-export function generateMappings(records: OperationRecord[]): WireMockMapping[] {
+export function generateMappings(records: OperationRecord[], seed?: number): WireMockMapping[] {
+  const random = seed === undefined ? undefined : createSeededRandom(seed);
+
   return records.map((record) => {
     const urlPattern = generateURLPattern(record);
     const request: WireMockRequest = {
@@ -46,7 +51,7 @@ export function generateMappings(records: OperationRecord[]): WireMockMapping[] 
     };
 
     return {
-      id: generateId(),
+      id: random ? generateSeededId(random) : generateId(),
       name: `${record.method.toUpperCase()} ${record.path} - ${String(record.statusCode)}`,
       priority: getPriorityForStatus(record.statusCode),
       request,
@@ -173,5 +178,19 @@ function generateId(): string {
   buffer[8] = (byte8 & 0x3f) | 0x80;
 
   const hex = buffer.toString('hex');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
+
+/**
+ * Generate a deterministic UUID v4 for WireMock mapping IDs using a seeded PRNG.
+ * @param random - Deterministic [0, 1) random number generator
+ * @returns UUID string
+ */
+function generateSeededId(random: () => number): string {
+  const bytes = Array.from({ length: 16 }, () => Math.floor(random() * 256));
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+
+  const hex = bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }

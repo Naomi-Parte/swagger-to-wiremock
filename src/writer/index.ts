@@ -16,6 +16,8 @@ export interface WriteOptions {
   clean?: boolean;
   /** Print what would be written without actually writing (default: false) */
   dryRun?: boolean;
+  /** Seed used for deterministic response body generation (default: 42) */
+  seed?: number;
 }
 
 export interface WriteResult {
@@ -42,6 +44,7 @@ export async function writeStubs(
   const outputDir = options.outputDir ?? './wiremock';
   const clean = options.clean ?? false;
   const dryRun = options.dryRun ?? false;
+  const seed = options.seed ?? 42;
 
   if (clean && !dryRun) {
     await rm(outputDir, { recursive: true, force: true });
@@ -80,7 +83,7 @@ export async function writeStubs(
     const bodyPath = join(filesDir, item.bodyFileName);
 
     const mappingContent = `${JSON.stringify(item.mapping, null, 2)}\n`;
-    const body = generateResponseBody(item.record, 42);
+    const body = generateResponseBody(item.record, seed);
     const bodyContent = typeof body === 'string' ? body : `${JSON.stringify(body, null, 2)}\n`;
 
     mappingFiles.push(mappingPath);
