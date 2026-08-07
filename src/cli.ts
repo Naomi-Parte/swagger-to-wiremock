@@ -28,6 +28,7 @@ Examples:
   $ openapi-to-wiremock convert ./api.yaml --status 400,404    # Specific status codes
   $ openapi-to-wiremock convert ./api.yaml --empty             # Skeleton with TODO bodies
   $ openapi-to-wiremock convert ./api.yaml --empty --status 400,401  # Skeleton for specific codes
+  $ openapi-to-wiremock convert ./api.yaml --flat              # Single mappings/__files folder (no split)
 `;
 
 interface ConvertOptions {
@@ -40,6 +41,29 @@ interface ConvertOptions {
   helpExamples?: boolean;
   status?: string;
   empty?: boolean;
+  flat?: boolean;
+}
+
+/**
+ * Format per-folder stub counts for the split-mode summary line.
+ * @param folderCounts - Stub counts keyed by folder name (e.g. "2xx", "all")
+ * @returns Formatted string, e.g. "2xx/ (3 stubs), 5xx/ (3 stubs), all/ (6 stubs)"
+ */
+function formatFolderSummary(folderCounts: Record<string, number>): string {
+  const classOrder = ['1xx', '2xx', '3xx', '4xx', '5xx'];
+  const parts: string[] = [];
+
+  for (const cls of classOrder) {
+    if (folderCounts[cls] !== undefined) {
+      parts.push(`${cls}/ (${folderCounts[cls]} stubs)`);
+    }
+  }
+
+  if (folderCounts.all !== undefined) {
+    parts.push(`all/ (${folderCounts.all} stubs)`);
+  }
+
+  return parts.join(', ');
 }
 
 /**
@@ -78,6 +102,7 @@ program
   .option('--help-examples', 'Show usage examples')
   .option('--status <codes>', 'Filter by status code: 2xx, 4xx, 5xx, or specific codes (comma-separated)')
   .option('--empty', 'Generate skeleton stubs with TODO placeholder response bodies')
+  .option('--flat', 'Write a single mappings/__files folder instead of splitting by status class')
   .action(async (input: string, options: ConvertOptions) => {
     if (options.helpExamples) {
       console.log(EXAMPLES);
@@ -146,21 +171,28 @@ program
 
       // Step 4: Write to disk
       log('[info] Writing files...');
+      const includeAllFolder = !options.status;
       const result = await writeStubs(mappings, filteredRecords, {
         outputDir: options.output,
         clean: options.clean ?? true,
         dryRun: options.dryRun ?? false,
         seed,
         empty: options.empty ?? false,
+        flat: options.flat ?? false,
+        includeAllFolder,
       });
 
       // Summary
       if (!quiet) {
-        console.log(`✅ Generated ${result.mappingFiles.length} mappings → ${options.output}`);
-        console.log(`   ${result.bodyFiles.length} response body files`);
-        console.log(`   ${(result.totalBytes / 1024).toFixed(1)} KB total`);
+        console.log(`✅ Generated ${mappings.length} mappings → ${options.output}`);
+        if (result.folderCounts) {
+          console.log(`   Folders: ${formatFolderSummary(result.folderCounts)}`);
+        } else {
+          console.log(`   ${result.bodyFiles.length} response body files`);
+          console.log(`   ${(result.totalBytes / 1024).toFixed(1)} KB total`);
+        }
         if (isPlaceholderMode) {
-          console.log('   ℹ️  Placeholder body files created — edit __files/*.json with your custom responses');
+          console.log(`   ℹ️  Status ${options.status} not defined in spec — placeholder mappings generated`);
         } else if (options.empty) {
           console.log('   ℹ️  Empty templates — populate __files/*.json with your responses');
         }

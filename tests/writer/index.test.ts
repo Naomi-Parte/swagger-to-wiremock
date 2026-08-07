@@ -100,7 +100,7 @@ describe('writeStubs', () => {
     const mappings = sampleMappings();
     const records = sampleRecords();
 
-    const result = await writeStubs(mappings, records, { outputDir });
+    const result = await writeStubs(mappings, records, { outputDir, flat: true });
 
     expect(result.mappingFiles).toHaveLength(2);
     expect(result.bodyFiles).toHaveLength(2);
@@ -119,7 +119,7 @@ describe('writeStubs', () => {
     const outputDir = createTmpDirPath('nested');
     const nested = join(outputDir, 'a', 'b', 'c');
 
-    await writeStubs(sampleMappings(), sampleRecords(), { outputDir: nested });
+    await writeStubs(sampleMappings(), sampleRecords(), { outputDir: nested, flat: true });
 
     await expect(access(join(nested, 'mappings'))).resolves.toBeUndefined();
     await expect(access(join(nested, '__files'))).resolves.toBeUndefined();
@@ -131,7 +131,7 @@ describe('writeStubs', () => {
     const oldFile = join(outputDir, 'old.txt');
     await writeFile(oldFile, 'stale', 'utf8');
 
-    await writeStubs(sampleMappings(), sampleRecords(), { outputDir, clean: true });
+    await writeStubs(sampleMappings(), sampleRecords(), { outputDir, clean: true, flat: true });
 
     await expect(access(oldFile)).rejects.toThrow();
     await expect(access(join(outputDir, 'mappings'))).resolves.toBeUndefined();
@@ -139,7 +139,7 @@ describe('writeStubs', () => {
 
   it('dry run does not write files', async () => {
     const outputDir = createTmpDirPath('dry-run');
-    const result = await writeStubs(sampleMappings(), sampleRecords(), { outputDir, dryRun: true });
+    const result = await writeStubs(sampleMappings(), sampleRecords(), { outputDir, dryRun: true, flat: true });
 
     expect(result.mappingFiles).toHaveLength(2);
     expect(result.bodyFiles).toHaveLength(2);
@@ -152,7 +152,7 @@ describe('writeStubs', () => {
     const mappings = sampleMappings();
     const records = sampleRecords();
 
-    await writeStubs(mappings, records, { outputDir });
+    await writeStubs(mappings, records, { outputDir, flat: true });
 
     const body1Path = join(outputDir, '__files', 'get-pets-200.json');
     const body2Path = join(outputDir, '__files', 'post-pets-201.json');
@@ -169,7 +169,7 @@ describe('writeStubs', () => {
 
   it('handles empty mappings array', async () => {
     const outputDir = createTmpDirPath('empty');
-    const result = await writeStubs([], [], { outputDir });
+    const result = await writeStubs([], [], { outputDir, flat: true });
 
     expect(result).toEqual({
       mappingFiles: [],
@@ -188,7 +188,7 @@ describe('writeStubs', () => {
     const mappings = sampleMappings();
     const records = sampleRecords();
 
-    await writeStubs(mappings, records, { outputDir, empty: true });
+    await writeStubs(mappings, records, { outputDir, empty: true, flat: true });
 
     const body1 = JSON.parse(
       await readFile(join(outputDir, '__files', 'get-pets-200.json'), 'utf8'),
@@ -206,7 +206,7 @@ describe('writeStubs', () => {
     const mappings = sampleMappings();
     const records = sampleRecords();
 
-    await writeStubs(mappings, records, { outputDir, empty: true });
+    await writeStubs(mappings, records, { outputDir, empty: true, flat: true });
 
     const mappingContent = JSON.parse(
       await readFile(join(outputDir, 'mappings', 'get-pets-200.json'), 'utf8'),
@@ -222,7 +222,7 @@ describe('writeStubs', () => {
     const mappings = sampleMappings().slice(0, 1);
     const records = sampleRecords().slice(0, 1);
 
-    const result = await writeStubs(mappings, records, { outputDir, empty: true });
+    const result = await writeStubs(mappings, records, { outputDir, empty: true, flat: true });
 
     expect(result.mappingFiles).toHaveLength(1);
     expect(result.bodyFiles).toHaveLength(1);
@@ -238,10 +238,56 @@ describe('writeStubs', () => {
     const mappings = sampleMappings();
     const records = sampleRecords();
 
-    await writeStubs(mappings, records, { outputDir });
+    await writeStubs(mappings, records, { outputDir, flat: true });
 
     const body1 = JSON.parse(await readFile(join(outputDir, '__files', 'get-pets-200.json'), 'utf8')) as unknown;
     expect(body1).not.toEqual({ TODO: expect.any(String) as unknown });
     expect(body1).toEqual(normalizeBodyForAssert(generateResponseBody(records[0], 42)));
+  });
+
+  it('split mode (default) writes per-status-class folders plus an all/ folder', async () => {
+    const outputDir = createTmpDirPath('split-default');
+    const mappings = sampleMappings();
+    const records = sampleRecords();
+
+    const result = await writeStubs(mappings, records, { outputDir });
+
+    await expect(access(join(outputDir, '2xx', 'mappings', 'get-pets-200.json'))).resolves.toBeUndefined();
+    await expect(access(join(outputDir, '2xx', '__files', 'get-pets-200.json'))).resolves.toBeUndefined();
+    await expect(access(join(outputDir, '2xx', 'mappings', 'post-pets-201.json'))).resolves.toBeUndefined();
+    await expect(access(join(outputDir, 'all', 'mappings', 'get-pets-200.json'))).resolves.toBeUndefined();
+    await expect(access(join(outputDir, 'all', 'mappings', 'post-pets-201.json'))).resolves.toBeUndefined();
+
+    expect(result.folderCounts).toEqual({ '2xx': 2, all: 2 });
+  });
+
+  it('split mode with includeAllFolder: false omits the all/ folder', async () => {
+    const outputDir = createTmpDirPath('split-no-all');
+    const mappings = sampleMappings();
+    const records = sampleRecords();
+
+    const result = await writeStubs(mappings, records, { outputDir, includeAllFolder: false });
+
+    await expect(access(join(outputDir, '2xx', 'mappings', 'get-pets-200.json'))).resolves.toBeUndefined();
+    await expect(access(join(outputDir, 'all'))).rejects.toThrow();
+    expect(result.folderCounts).toEqual({ '2xx': 2 });
+  });
+
+  it('--empty in split mode produces TODO bodies in each class folder', async () => {
+    const outputDir = createTmpDirPath('split-empty');
+    const mappings = sampleMappings();
+    const records = sampleRecords();
+
+    await writeStubs(mappings, records, { outputDir, empty: true });
+
+    const body2xx = JSON.parse(
+      await readFile(join(outputDir, '2xx', '__files', 'get-pets-200.json'), 'utf8'),
+    ) as Record<string, string>;
+    const bodyAll = JSON.parse(
+      await readFile(join(outputDir, 'all', '__files', 'get-pets-200.json'), 'utf8'),
+    ) as Record<string, string>;
+
+    expect(body2xx).toEqual({ TODO: 'Add response body for GET /pets → 200' });
+    expect(bodyAll).toEqual({ TODO: 'Add response body for GET /pets → 200' });
   });
 });

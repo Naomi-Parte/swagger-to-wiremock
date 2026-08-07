@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { execFileSync } from 'child_process';
-import { access, mkdir, readdir, rm, writeFile } from 'fs/promises';
+import { access, mkdir, readdir, readFile, rm, writeFile } from 'fs/promises';
 import { join, resolve } from 'path';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
@@ -42,6 +42,20 @@ describe('cli convert', () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('✅ Generated');
+    expect(result.stdout).toContain('Folders:');
+
+    const mappingFiles = await readdir(join(outputDir, 'all', 'mappings'));
+    const bodyFiles = await readdir(join(outputDir, 'all', '__files'));
+    expect(mappingFiles.length).toBeGreaterThan(0);
+    expect(bodyFiles.length).toBeGreaterThan(0);
+  });
+
+  it('--flat writes a single mappings/__files folder', async () => {
+    const outputDir = createTmpDirPath('flat');
+    const result = runCli(['convert', SPEC_PATH, '-o', outputDir, '--flat']);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).not.toContain('Folders:');
 
     const mappingFiles = await readdir(join(outputDir, 'mappings'));
     const bodyFiles = await readdir(join(outputDir, '__files'));
@@ -64,7 +78,7 @@ describe('cli convert', () => {
     const result = runCli(['convert', SPEC_PATH, '-o', outputDir]);
 
     expect(result.status).toBe(0);
-    const mappingFiles = await readdir(join(outputDir, 'mappings'));
+    const mappingFiles = await readdir(join(outputDir, 'all', 'mappings'));
     expect(mappingFiles.length).toBeGreaterThan(0);
   });
 
@@ -86,12 +100,12 @@ describe('cli convert', () => {
     expect(resultA.status).toBe(0);
     expect(resultB.status).toBe(0);
 
-    const mappingsA = (await readdir(join(outputDirA, 'mappings'))).sort();
-    const mappingsB = (await readdir(join(outputDirB, 'mappings'))).sort();
+    const mappingsA = (await readdir(join(outputDirA, 'all', 'mappings'))).sort();
+    const mappingsB = (await readdir(join(outputDirB, 'all', 'mappings'))).sort();
     expect(mappingsA).toEqual(mappingsB);
 
-    const bodiesA = (await readdir(join(outputDirA, '__files'))).sort();
-    const bodiesB = (await readdir(join(outputDirB, '__files'))).sort();
+    const bodiesA = (await readdir(join(outputDirA, 'all', '__files'))).sort();
+    const bodiesB = (await readdir(join(outputDirB, 'all', '__files'))).sort();
     expect(bodiesA).toEqual(bodiesB);
   });
 
@@ -111,7 +125,7 @@ describe('cli convert', () => {
     await mkdir(join(outputDir, '__files'), { recursive: true });
     await writeFile(join(outputDir, 'mappings', 'existing.json'), '{}', 'utf8');
 
-    const result = runCli(['convert', SPEC_PATH, '-o', outputDir, '--no-clean']);
+    const result = runCli(['convert', SPEC_PATH, '-o', outputDir, '--no-clean', '--flat']);
 
     expect(result.status).toBe(0);
     const mappingFiles = await readdir(join(outputDir, 'mappings'));
@@ -148,11 +162,36 @@ describe('cli convert', () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('generating placeholders for all endpoints');
-    expect(result.stdout).toContain('Placeholder body files created');
+    expect(result.stdout).toContain('not defined in spec — placeholder mappings generated');
 
-    const mappingFiles = await readdir(join(outputDir, 'mappings'));
-    const bodyFiles = await readdir(join(outputDir, '__files'));
+    const mappingFiles = await readdir(join(outputDir, '4xx', 'mappings'));
+    const bodyFiles = await readdir(join(outputDir, '4xx', '__files'));
     expect(mappingFiles).toHaveLength(3);
     expect(bodyFiles).toHaveLength(3);
+    await expect(access(join(outputDir, 'all'))).rejects.toThrow();
+  });
+
+  it('--status 2xx splits into only the 2xx/ folder, no all/', async () => {
+    const outputDir = createTmpDirPath('status-2xx');
+    const result = runCli(['convert', SPEC_PATH, '-o', outputDir, '--status', '2xx']);
+
+    expect(result.status).toBe(0);
+    const mappingFiles = await readdir(join(outputDir, '2xx', 'mappings'));
+    expect(mappingFiles.length).toBeGreaterThan(0);
+    await expect(access(join(outputDir, 'all'))).rejects.toThrow();
+  });
+
+  it('--empty combined with split mode writes TODO bodies in class folders', async () => {
+    const outputDir = createTmpDirPath('empty-split');
+    const result = runCli(['convert', SPEC_PATH, '-o', outputDir, '--empty']);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Empty templates');
+
+    const files = await readdir(join(outputDir, 'all', '__files'));
+    const firstBody = JSON.parse(
+      await readFile(join(outputDir, 'all', '__files', files[0]!), 'utf8'),
+    ) as Record<string, string>;
+    expect(firstBody.TODO).toContain('Add response body for');
   });
 });

@@ -33,3 +33,4 @@ export {
   extractSpecificCodes,
   createPlaceholderBody,
 } from './filters/placeholder-generator.js';
+export { getStatusClass, groupByStatusClass } from './filters/status-classifier.js';
