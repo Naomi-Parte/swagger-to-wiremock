@@ -11,6 +11,7 @@ import { transformSpec } from './transformer/index.js';
 import { generateMappings } from './generator/index.js';
 import { writeStubs } from './writer/index.js';
 import { ParserError } from './errors/parser-error.js';
+import { parseStatusFilter, filterByStatus } from './filters/status-filter.js';
 
 const version = '0.0.1';
 
@@ -21,6 +22,9 @@ Examples:
   $ openapi-to-wiremock convert ./api.yaml -o ./stubs -s 99 -v
   $ openapi-to-wiremock convert ./api.yaml --dry-run
   $ openapi-to-wiremock convert ./api.yaml --no-clean -o ./existing-stubs
+  $ openapi-to-wiremock convert ./api.yaml --status 2xx        # Only success responses
+  $ openapi-to-wiremock convert ./api.yaml --status 4xx,5xx    # Only error responses
+  $ openapi-to-wiremock convert ./api.yaml --status 400,404    # Specific status codes
 `;
 
 interface ConvertOptions {
@@ -31,6 +35,7 @@ interface ConvertOptions {
   clean?: boolean; // Commander handles --no-clean as clean=false
   dryRun?: boolean;
   helpExamples?: boolean;
+  status?: string;
 }
 
 /**
@@ -67,6 +72,7 @@ program
   .option('--dry-run', 'Show what would be generated without writing files')
   .option('--no-clean', 'Do not remove output directory before writing')
   .option('--help-examples', 'Show usage examples')
+  .option('--status <codes>', 'Filter by status code: 2xx, 4xx, 5xx, or specific codes (comma-separated)')
   .action(async (input: string, options: ConvertOptions) => {
     if (options.helpExamples) {
       console.log(EXAMPLES);
@@ -103,14 +109,26 @@ program
       const records = transformSpec(spec);
       log(`[info] ${records.length} operations found`);
 
+      // Step 2.5: Filter by status (if --status provided)
+      let filteredRecords = records;
+      if (options.status) {
+        const filters = parseStatusFilter(options.status);
+        filteredRecords = filterByStatus(records, filters);
+        log(`[info] Status filter: ${options.status} → ${filteredRecords.length}/${records.length} records`);
+        if (filteredRecords.length === 0) {
+          console.warn(`⚠️ No operations match status filter "${options.status}"`);
+          process.exit(0);
+        }
+      }
+
       // Step 3: Generate mappings
       log('[info] Generating mappings...');
-      const mappings = generateMappings(records, seed);
+      const mappings = generateMappings(filteredRecords, seed);
       log(`[info] ${mappings.length} mappings generated`);
 
       // Step 4: Write to disk
       log('[info] Writing files...');
-      const result = await writeStubs(mappings, records, {
+      const result = await writeStubs(mappings, filteredRecords, {
         outputDir: options.output,
         clean: options.clean ?? true,
         dryRun: options.dryRun ?? false,
