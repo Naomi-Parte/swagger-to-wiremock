@@ -146,4 +146,54 @@ describe('generateMappings', () => {
       'Content-Type': { equalTo: 'application/json' },
     });
   });
+
+  it('generates identical UUIDs when same seed is provided', () => {
+    const records: OperationRecord[] = [
+      {
+        id: 'get-1',
+        path: '/pets',
+        method: 'get',
+        statusCode: 200,
+        pathParams: [],
+        queryParams: [],
+        headers: [],
+        contentType: 'application/json',
+      },
+      {
+        id: 'post-1',
+        path: '/pets',
+        method: 'post',
+        statusCode: 201,
+        pathParams: [],
+        queryParams: [],
+        headers: [],
+        contentType: 'application/json',
+      },
+    ];
+
+    const mappingsA = generateMappings(records, 42);
+    const mappingsB = generateMappings(records, 42);
+
+    expect(mappingsA.map((m) => m.id)).toEqual(mappingsB.map((m) => m.id));
+  });
+
+  it('generates different UUIDs without seed', () => {
+    const records: OperationRecord[] = [
+      {
+        id: 'get-1',
+        path: '/pets',
+        method: 'get',
+        statusCode: 200,
+        pathParams: [],
+        queryParams: [],
+        headers: [],
+        contentType: 'application/json',
+      },
+    ];
+
+    const mappingsA = generateMappings(records);
+    const mappingsB = generateMappings(records);
+
+    expect(mappingsA[0].id).not.toBe(mappingsB[0].id);
+  });
 });
