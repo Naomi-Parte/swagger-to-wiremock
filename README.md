@@ -160,6 +160,7 @@ diff -r out1 out2  # No differences
 ## Supported
 
 - ✅ OpenAPI 3.0.x (YAML and JSON)
+- ✅ Swagger 2.0 (YAML and JSON, auto-converted to OpenAPI 3.0 in-memory)
 - ✅ `$ref` resolution (local, remote, circular)
 - ✅ Path parameters (format-aware regex)
 - ✅ Required query parameters
@@ -170,7 +171,6 @@ diff -r out1 out2  # No differences
 
 ## Not Yet Supported
 
-- ❌ Swagger 2.0 (use `swagger2openapi` to convert first)
 - ❌ OpenAPI 3.1 type arrays
 - ❌ Security scheme matchers
 - ❌ Request body matchers
@@ -178,7 +178,6 @@ diff -r out1 out2  # No differences
 
 ## Roadmap
 
-- **v0.2.0** — Swagger 2.0 auto-conversion, `--serve` flag (auto-start WireMock)
 - **v0.3.0** — Request body matchers, security schemes
 - **v1.0.0** — Full OpenAPI 3.1 support, response templating, `x-wiremock-*` extensions
 

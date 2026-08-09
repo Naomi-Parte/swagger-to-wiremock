@@ -7,6 +7,8 @@ import { randomBytes } from 'crypto';
 
 const CLI_PATH = resolve(__dirname, '../../dist/cli.js');
 const SPEC_PATH = resolve(__dirname, '../fixtures/specs/petstore.yaml');
+const SWAGGER2_YAML_SPEC_PATH = resolve(__dirname, '../fixtures/specs/petstore-swagger2.yaml');
+const SWAGGER2_JSON_SPEC_PATH = resolve(__dirname, '../fixtures/specs/petstore-swagger2.json');
 
 const createdDirs: string[] = [];
 
@@ -195,5 +197,97 @@ describe('cli convert', () => {
     ) as Record<string, string>;
     expect(firstBody.TODO).toContain('Add response body for');
     await expect(access(join(outputDir, 'all'))).rejects.toThrow();
+  });
+});
+
+describe('cli convert — Swagger 2.0 auto-conversion', () => {
+  it('converts a Swagger 2.0 YAML spec and produces mappings without manual pre-processing', async () => {
+    const outputDir = createTmpDirPath('swagger2-yaml');
+    const result = runCli(['convert', SWAGGER2_YAML_SPEC_PATH, '-o', outputDir]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Swagger 2.0 detected — auto-converting to OpenAPI 3.0');
+    expect(result.stdout).toContain('Converted successfully. Proceeding with generation.');
+    expect(result.stdout).toContain('✅ Generated');
+
+    const mappingFiles = await readdir(join(outputDir, '2xx', 'mappings'));
+    expect(mappingFiles.length).toBeGreaterThan(0);
+  });
+
+  it('converts a Swagger 2.0 JSON spec and produces mappings', async () => {
+    const outputDir = createTmpDirPath('swagger2-json');
+    const result = runCli(['convert', SWAGGER2_JSON_SPEC_PATH, '-o', outputDir]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('Swagger 2.0 detected — auto-converting to OpenAPI 3.0');
+
+    const mappingFiles = await readdir(join(outputDir, '2xx', 'mappings'));
+    expect(mappingFiles.length).toBeGreaterThan(0);
+  });
+
+  it('does not log the Swagger 2.0 conversion message for OpenAPI 3.0 specs', () => {
+    const outputDir = createTmpDirPath('swagger2-not-triggered');
+    const result = runCli(['convert', SPEC_PATH, '-o', outputDir]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).not.toContain('Swagger 2.0 detected');
+  });
+
+  it('--quiet suppresses the Swagger 2.0 conversion info logs', () => {
+    const outputDir = createTmpDirPath('swagger2-quiet');
+    const result = runCli(['convert', SWAGGER2_YAML_SPEC_PATH, '-o', outputDir, '-q']);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim()).toBe('');
+  });
+
+  it('is deterministic across repeated conversions of the same Swagger 2.0 spec', async () => {
+    const outputDirA = createTmpDirPath('swagger2-seed-a');
+    const outputDirB = createTmpDirPath('swagger2-seed-b');
+
+    const resultA = runCli(['convert', SWAGGER2_YAML_SPEC_PATH, '-o', outputDirA, '-s', '42']);
+    const resultB = runCli(['convert', SWAGGER2_YAML_SPEC_PATH, '-o', outputDirB, '-s', '42']);
+
+    expect(resultA.status).toBe(0);
+    expect(resultB.status).toBe(0);
+
+    const mappingsA = (await readdir(join(outputDirA, '2xx', 'mappings'))).sort();
+    const mappingsB = (await readdir(join(outputDirB, '2xx', 'mappings'))).sort();
+    expect(mappingsA).toEqual(mappingsB);
+
+    const firstMappingA = await readFile(join(outputDirA, '2xx', 'mappings', mappingsA[0]!), 'utf8');
+    const firstMappingB = await readFile(join(outputDirB, '2xx', 'mappings', mappingsB[0]!), 'utf8');
+    expect(firstMappingA).toEqual(firstMappingB);
+  });
+
+  it('works with --status filter after Swagger 2.0 conversion', async () => {
+    const outputDir = createTmpDirPath('swagger2-status');
+    const result = runCli(['convert', SWAGGER2_YAML_SPEC_PATH, '-o', outputDir, '--status', '2xx']);
+
+    expect(result.status).toBe(0);
+    const mappingFiles = await readdir(join(outputDir, '2xx', 'mappings'));
+    expect(mappingFiles.length).toBeGreaterThan(0);
+    await expect(access(join(outputDir, '5xx'))).rejects.toThrow();
+  });
+
+  it('works with --flat after Swagger 2.0 conversion', async () => {
+    const outputDir = createTmpDirPath('swagger2-flat');
+    const result = runCli(['convert', SWAGGER2_YAML_SPEC_PATH, '-o', outputDir, '--flat']);
+
+    expect(result.status).toBe(0);
+    const mappingFiles = await readdir(join(outputDir, 'mappings'));
+    expect(mappingFiles.length).toBeGreaterThan(0);
+  });
+
+  it('works with --empty after Swagger 2.0 conversion', async () => {
+    const outputDir = createTmpDirPath('swagger2-empty');
+    const result = runCli(['convert', SWAGGER2_YAML_SPEC_PATH, '-o', outputDir, '--empty']);
+
+    expect(result.status).toBe(0);
+    const files = await readdir(join(outputDir, '2xx', '__files'));
+    const firstBody = JSON.parse(
+      await readFile(join(outputDir, '2xx', '__files', files[0]!), 'utf8'),
+    ) as Record<string, string>;
+    expect(firstBody.TODO).toContain('Add response body for');
   });
 });

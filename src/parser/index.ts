@@ -6,6 +6,8 @@
 import SwaggerParser from '@apidevtools/swagger-parser';
 import { loadSpecFromFile } from './load-spec.js';
 import { validateOpenAPIVersion } from './validate-version.js';
+import { isSwagger2 } from './swagger2-detector.js';
+import { convertSwagger2ToOpenApi3 } from './swagger2-converter.js';
 import { ParserError } from '../errors/parser-error.js';
 
 /**
@@ -23,6 +25,9 @@ export interface ParseOptions {
 
   /** Enable verbose diagnostics (default: false) */
   verbose?: boolean;
+
+  /** Suppress all info-level logging, including Swagger 2.0 conversion notices (default: false) */
+  quiet?: boolean;
 }
 
 /**
@@ -42,18 +47,36 @@ export async function parseOpenAPISpec(
   filePath: string,
   options: ParseOptions = {},
 ): Promise<Record<string, unknown>> {
-  const { allowRemote = true, verbose = false } = options;
+  const { allowRemote = true, verbose = false, quiet = false } = options;
+  const logInfo = (message: string): void => {
+    if (!quiet) console.log(message);
+  };
 
   // Step 1: Load spec file (JSON/YAML)
   if (verbose) console.log(`[Parser] Loading spec from: ${filePath}`);
-  const spec = loadSpecFromFile(filePath);
+  const rawSpec = loadSpecFromFile(filePath);
 
-  // Step 2: Validate version
+  // Step 2: Detect Swagger 2.0 and auto-convert to OpenAPI 3.0 in-memory.
+  // The rest of the pipeline never sees Swagger 2.0 — only a valid OpenAPI 3.0 document.
+  let spec = rawSpec;
+  if (isSwagger2(rawSpec)) {
+    logInfo('[info] Swagger 2.0 detected — auto-converting to OpenAPI 3.0');
+    const { openapi, warnings } = await convertSwagger2ToOpenApi3(rawSpec);
+    if (verbose) {
+      for (const warning of warnings) {
+        console.log(`[Parser] swagger2openapi warning: ${warning}`);
+      }
+    }
+    logInfo('[info] Converted successfully. Proceeding with generation.');
+    spec = openapi;
+  }
+
+  // Step 3: Validate version
   if (verbose) console.log('[Parser] Validating OpenAPI version...');
   const version = validateOpenAPIVersion(spec);
   if (verbose) console.log(`[Parser] Spec version: ${version}`);
 
-  // Step 3: Dereference $ref pointers
+  // Step 4: Dereference $ref pointers
   if (verbose) console.log('[Parser] Dereferencing $ref pointers...');
 
   try {
