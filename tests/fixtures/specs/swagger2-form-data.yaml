@@ -1,0 +1,61 @@
+swagger: "2.0"
+info:
+  title: Form Data API
+  version: 1.0.0
+host: example.com
+basePath: /v2
+schemes:
+  - http
+produces:
+  - application/json
+paths:
+  /upload:
+    post:
+      summary: Upload a form
+      operationId: uploadForm
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: name
+          in: formData
+          required: true
+          type: string
+        - name: file
+          in: formData
+          required: true
+          type: file
+      responses:
+        "201":
+          description: Upload accepted
+          schema:
+            $ref: "#/definitions/UploadResult"
+          examples:
+            application/json:
+              id: "u1"
+              status: "accepted"
+        default:
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/Error"
+definitions:
+  UploadResult:
+    type: object
+    required:
+      - id
+      - status
+    properties:
+      id:
+        type: string
+      status:
+        type: string
+  Error:
+    type: object
+    required:
+      - code
+      - message
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string

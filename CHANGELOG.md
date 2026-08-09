@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - Unreleased
+
+### Added
+
+- **Swagger 2.0 auto-conversion** — Swagger 2.0 specs (YAML or JSON) are now automatically converted to OpenAPI 3.0 in-memory via `swagger2openapi` before entering the pipeline. No new flags required; the intermediate OpenAPI 3.0 document is never written to disk.
+- Info-level logs (`Swagger 2.0 detected — auto-converting to OpenAPI 3.0` / `Converted successfully. Proceeding with generation.`) shown at default verbosity, suppressed with `--quiet`, with additional `swagger2openapi` warnings surfaced under `--verbose`.
+- `ParserError` with code `SWAGGER2_CONVERSION_ERROR` and an actionable message when auto-conversion fails.
+
 ## [0.1.0] - 2026-08-07
 
 ### Added

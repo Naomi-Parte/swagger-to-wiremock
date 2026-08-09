@@ -128,7 +128,7 @@ program
 
       // Step 1: Parse
       log('[info] Parsing spec...');
-      const spec = await parseOpenAPISpec(input);
+      const spec = await parseOpenAPISpec(input, { verbose, quiet });
 
       // Step 2: Transform
       log('[info] Transforming to IR...');

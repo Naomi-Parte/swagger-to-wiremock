@@ -11,7 +11,13 @@ import { BaseError } from './base-error.js';
  */
 export class ParserError extends BaseError {
   constructor(
-    code: 'INVALID_FILE' | 'INVALID_SPEC' | 'UNSUPPORTED_VERSION' | 'CIRCULAR_REF' | 'PARSE_ERROR',
+    code:
+      | 'INVALID_FILE'
+      | 'INVALID_SPEC'
+      | 'UNSUPPORTED_VERSION'
+      | 'CIRCULAR_REF'
+      | 'PARSE_ERROR'
+      | 'SWAGGER2_CONVERSION_ERROR',
     message: string,
     context?: Record<string, unknown>,
   ) {

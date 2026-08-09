@@ -1,0 +1,74 @@
+swagger: "2.0"
+info:
+  title: Definitions Heavy API
+  version: 1.0.0
+host: example.com
+basePath: /v2
+schemes:
+  - http
+produces:
+  - application/json
+paths:
+  /widgets:
+    get:
+      summary: List widgets
+      operationId: listWidgets
+      responses:
+        "200":
+          description: A list of widgets
+          schema:
+            $ref: "#/definitions/WidgetList"
+          examples:
+            application/json:
+              - id: "w1"
+                name: "Widget One"
+                category:
+                  id: "c1"
+                  label: "Category One"
+              - id: "w2"
+                name: "Widget Two"
+                category:
+                  id: "c2"
+                  label: "Category Two"
+        default:
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/Error"
+definitions:
+  Widget:
+    type: object
+    required:
+      - id
+      - name
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      category:
+        $ref: "#/definitions/Category"
+  Category:
+    type: object
+    required:
+      - id
+      - label
+    properties:
+      id:
+        type: string
+      label:
+        type: string
+  WidgetList:
+    type: array
+    items:
+      $ref: "#/definitions/Widget"
+  Error:
+    type: object
+    required:
+      - code
+      - message
+    properties:
+      code:
+        type: integer
+        format: int32
+      message:
+        type: string
