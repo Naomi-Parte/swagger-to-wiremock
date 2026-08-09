@@ -1,5 +1,5 @@
 /**
- * @file Main entry point for openapi-to-wiremock library
+ * @file Main entry point for swagger-to-wiremock library
  * @description Re-exports all public types and functions for library consumers
  */
 

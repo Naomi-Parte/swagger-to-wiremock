@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * @file CLI entry point for openapi-to-wiremock
+ * @file CLI entry point for swagger-to-wiremock
  * @description Parses command-line arguments and orchestrates the conversion pipeline
  */
 
@@ -18,17 +18,17 @@ const version = '0.0.1';
 
 const EXAMPLES = `
 Examples:
-  $ openapi-to-wiremock convert ./petstore.yaml
-  $ openapi-to-wiremock convert ./api.yaml -o ./wiremock-stubs
-  $ openapi-to-wiremock convert ./api.yaml -o ./stubs -s 99 -v
-  $ openapi-to-wiremock convert ./api.yaml --dry-run
-  $ openapi-to-wiremock convert ./api.yaml --no-clean -o ./existing-stubs
-  $ openapi-to-wiremock convert ./api.yaml --status 2xx        # Only success responses
-  $ openapi-to-wiremock convert ./api.yaml --status 4xx,5xx    # Only error responses
-  $ openapi-to-wiremock convert ./api.yaml --status 400,404    # Specific status codes
-  $ openapi-to-wiremock convert ./api.yaml --empty             # Skeleton with TODO bodies
-  $ openapi-to-wiremock convert ./api.yaml --empty --status 400,401  # Skeleton for specific codes
-  $ openapi-to-wiremock convert ./api.yaml --flat              # Single mappings/__files folder (no split)
+  $ swagger-to-wiremock convert ./petstore.yaml
+  $ swagger-to-wiremock convert ./api.yaml -o ./wiremock-stubs
+  $ swagger-to-wiremock convert ./api.yaml -o ./stubs -s 99 -v
+  $ swagger-to-wiremock convert ./api.yaml --dry-run
+  $ swagger-to-wiremock convert ./api.yaml --no-clean -o ./existing-stubs
+  $ swagger-to-wiremock convert ./api.yaml --status 2xx        # Only success responses
+  $ swagger-to-wiremock convert ./api.yaml --status 4xx,5xx    # Only error responses
+  $ swagger-to-wiremock convert ./api.yaml --status 400,404    # Specific status codes
+  $ swagger-to-wiremock convert ./api.yaml --empty             # Skeleton with TODO bodies
+  $ swagger-to-wiremock convert ./api.yaml --empty --status 400,401  # Skeleton for specific codes
+  $ swagger-to-wiremock convert ./api.yaml --flat              # Single mappings/__files folder (no split)
 `;
 
 interface ConvertOptions {
@@ -82,7 +82,7 @@ function formatErrorMessage(error: unknown): string {
 }
 
 program
-  .name('openapi-to-wiremock')
+  .name('swagger-to-wiremock')
   .description('Convert OpenAPI 3.0/3.1 specs to native WireMock JSON stub mappings')
   .version(version);
 

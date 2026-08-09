@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **CLI tool**: `openapi-to-wiremock convert <spec> [options]`
+- **CLI tool**: `swagger-to-wiremock convert <spec> [options]`
 - **OpenAPI 3.0 parsing** with full `$ref` resolution via `@apidevtools/swagger-parser`
 - **Swagger 2.0 detection** with clear error message directing users to convert
 - **Transform pipeline** extracting operations, path/query params, response schemas

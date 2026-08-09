@@ -1,5 +1,5 @@
 {
-  "name": "openapi-to-wiremock",
+  "name": "swagger-to-wiremock",
   "version": "0.1.0",
   "description": "Convert OpenAPI 3.0 specs into native WireMock JSON stub mappings — offline, deterministic, zero config",
   "type": "module",
@@ -11,7 +11,7 @@
     }
   },
   "bin": {
-    "openapi-to-wiremock": "./dist/cli.js"
+    "swagger-to-wiremock": "./dist/cli.js"
   },
   "files": [
     "dist",
@@ -58,11 +58,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/naomi-parte/openapi-to-wiremock"
+    "url": "https://github.com/naomi-parte/swagger-to-wiremock"
   },
-  "homepage": "https://github.com/naomi-parte/openapi-to-wiremock#readme",
+  "homepage": "https://github.com/naomi-parte/swagger-to-wiremock#readme",
   "bugs": {
-    "url": "https://github.com/naomi-parte/openapi-to-wiremock/issues"
+    "url": "https://github.com/naomi-parte/swagger-to-wiremock/issues"
   }
 }
 

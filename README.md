@@ -1,8 +1,8 @@
-# openapi-to-wiremock
+# swagger-to-wiremock
 
 > Convert OpenAPI 3.0 specs into native WireMock JSON stub mappings — offline, deterministic, zero config.
 
-[![npm version](https://img.shields.io/npm/v/openapi-to-wiremock.svg)](https://www.npmjs.com/package/openapi-to-wiremock)
+[![npm version](https://img.shields.io/npm/v/swagger-to-wiremock.svg)](https://www.npmjs.com/package/swagger-to-wiremock)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
 ## The Problem
@@ -12,7 +12,7 @@ Manually creating WireMock mapping files from OpenAPI specs is tedious, error-pr
 ## The Solution
 
 ```bash
-npx openapi-to-wiremock convert ./api.yaml -o ./wiremock-stubs
+npx swagger-to-wiremock convert ./api.yaml -o ./wiremock-stubs
 java -jar wiremock.jar --root-dir ./wiremock-stubs/2xx --port 8080
 ```
 
@@ -22,20 +22,20 @@ One command generates a complete WireMock standalone directory — ready to serv
 
 ```bash
 # Use directly with npx (no install needed)
-npx openapi-to-wiremock convert ./api.yaml
+npx swagger-to-wiremock convert ./api.yaml
 
 # Or install globally
-npm install -g openapi-to-wiremock
+npm install -g swagger-to-wiremock
 
 # Or as a dev dependency
-npm install -D openapi-to-wiremock
+npm install -D swagger-to-wiremock
 ```
 
 ## Quick Start
 
 ```bash
 # Generate stubs (split by status class — default)
-npx openapi-to-wiremock convert ./petstore.yaml -o ./stubs
+npx swagger-to-wiremock convert ./petstore.yaml -o ./stubs
 
 # Start WireMock with happy path responses
 java -jar wiremock.jar --root-dir ./stubs/2xx --port 8080
@@ -69,13 +69,13 @@ Each folder is directly usable: `java -jar wiremock.jar --root-dir ./stubs/2xx`
 Use `--flat` for a single folder with all statuses (priority-ordered):
 
 ```bash
-npx openapi-to-wiremock convert ./api.yaml -o ./stubs --flat
+npx swagger-to-wiremock convert ./api.yaml -o ./stubs --flat
 ```
 
 ## CLI Reference
 
 ```
-openapi-to-wiremock convert <input> [options]
+swagger-to-wiremock convert <input> [options]
 
 Options:
   -o, --output <dir>     Output directory (default: ./wiremock)
@@ -94,29 +94,29 @@ Options:
 
 ```bash
 # Basic generation
-npx openapi-to-wiremock convert ./api.yaml
+npx swagger-to-wiremock convert ./api.yaml
 
 # Only error responses
-npx openapi-to-wiremock convert ./api.yaml --status 4xx,5xx
+npx swagger-to-wiremock convert ./api.yaml --status 4xx,5xx
 
 # Skeleton for testers to fill in
-npx openapi-to-wiremock convert ./api.yaml --empty
+npx swagger-to-wiremock convert ./api.yaml --empty
 
 # Placeholder for a status not in the spec
-npx openapi-to-wiremock convert ./api.yaml --status 400
+npx swagger-to-wiremock convert ./api.yaml --status 400
 
 # Custom seed for different fake data
-npx openapi-to-wiremock convert ./api.yaml -s 99
+npx swagger-to-wiremock convert ./api.yaml -s 99
 
 # Flat output for CI pipelines
-npx openapi-to-wiremock convert ./api.yaml --flat
+npx swagger-to-wiremock convert ./api.yaml --flat
 ```
 
 ## Tester Workflow
 
 1. **Generate stubs** for the status you want to test:
    ```bash
-   npx openapi-to-wiremock convert ./api.yaml -o ./stubs --status 4xx --empty
+   npx swagger-to-wiremock convert ./api.yaml -o ./stubs --status 4xx --empty
    ```
 2. **Customise response bodies** — edit `__files/*.json`:
    ```bash
@@ -134,7 +134,7 @@ npx openapi-to-wiremock convert ./api.yaml --flat
 ## Programmatic API
 
 ```typescript
-import { parseOpenAPISpec, transformSpec, generateMappings, writeStubs } from 'openapi-to-wiremock';
+import { parseOpenAPISpec, transformSpec, generateMappings, writeStubs } from 'swagger-to-wiremock';
 
 const spec = await parseOpenAPISpec('./api.yaml');
 const records = transformSpec(spec);
@@ -152,8 +152,8 @@ await writeStubs(mappings, records, {
 Same input + same seed = byte-for-byte identical output across runs. Safe for CI diffs and snapshot testing.
 
 ```bash
-npx openapi-to-wiremock convert ./api.yaml -o ./out1 -s 42
-npx openapi-to-wiremock convert ./api.yaml -o ./out2 -s 42
+npx swagger-to-wiremock convert ./api.yaml -o ./out1 -s 42
+npx swagger-to-wiremock convert ./api.yaml -o ./out2 -s 42
 diff -r out1 out2  # No differences
 ```
 

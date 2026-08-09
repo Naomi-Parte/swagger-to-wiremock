@@ -11,7 +11,7 @@ import type { WireMockMapping } from '../../src/types/wiremock-mapping.js';
 const createdDirs: string[] = [];
 
 function createTmpDirPath(name: string): string {
-  const dir = join(tmpdir(), `openapi-to-wiremock-${name}-${randomBytes(4).toString('hex')}`);
+  const dir = join(tmpdir(), `swagger-to-wiremock-${name}-${randomBytes(4).toString('hex')}`);
   createdDirs.push(dir);
   return dir;
 }

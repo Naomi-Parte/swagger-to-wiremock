@@ -11,7 +11,7 @@ const SPEC_PATH = resolve(__dirname, '../fixtures/specs/petstore.yaml');
 const createdDirs: string[] = [];
 
 function createTmpDirPath(name: string): string {
-  const dir = join(tmpdir(), `openapi-to-wiremock-cli-${name}-${randomBytes(4).toString('hex')}`);
+  const dir = join(tmpdir(), `swagger-to-wiremock-cli-${name}-${randomBytes(4).toString('hex')}`);
   createdDirs.push(dir);
   return dir;
 }
@@ -147,7 +147,7 @@ describe('cli convert', () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('Examples:');
-    expect(result.stdout).toContain('openapi-to-wiremock convert');
+    expect(result.stdout).toContain('swagger-to-wiremock convert');
   });
 
   it('invalid seed exits with code 1', () => {
