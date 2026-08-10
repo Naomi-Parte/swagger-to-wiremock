@@ -15,14 +15,28 @@ function createTmpDir(): string {
 describe('server', () => {
   let tmpDir: string;
   const originalEnv = process.env['WIREMOCK_JAR'];
+  const originalHome = process.env['HOME'];
+  const originalUserProfile = process.env['USERPROFILE'];
+  const originalHomeDrive = process.env['HOMEDRIVE'];
+  const originalHomePath = process.env['HOMEPATH'];
 
   beforeEach(() => {
     tmpDir = createTmpDir();
     delete process.env['WIREMOCK_JAR'];
+    // Redirect HOME so global config doesn't interfere with tests
+    process.env['HOME'] = tmpDir;
+    process.env['USERPROFILE'] = tmpDir;
+    process.env['HOMEDRIVE'] = '';
+    process.env['HOMEPATH'] = tmpDir;
   });
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
+    // Restore HOME
+    process.env['HOME'] = originalHome;
+    process.env['USERPROFILE'] = originalUserProfile;
+    process.env['HOMEDRIVE'] = originalHomeDrive;
+    process.env['HOMEPATH'] = originalHomePath;
     if (originalEnv !== undefined) {
       process.env['WIREMOCK_JAR'] = originalEnv;
     } else {
