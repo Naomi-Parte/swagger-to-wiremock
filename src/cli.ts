@@ -32,6 +32,7 @@ Examples:
   $ swagger-to-wiremock convert ./api.yaml --empty             # Skeleton with TODO bodies
   $ swagger-to-wiremock convert ./api.yaml --flat              # Single mappings/__files folder (no split)
   $ swagger-to-wiremock convert ./api.yaml --serve             # Generate + start mock server
+  $ swagger-to-wiremock convert ./api.yaml --no-security       # Skip auth header matchers
   $ swagger-to-wiremock convert ./api.yaml --serve --port 9090 # Generate + serve on custom port
   $ swagger-to-wiremock serve ./wiremock-stubs                 # Start server from existing stubs
   $ swagger-to-wiremock serve ./wiremock-stubs --port 9090     # Serve on custom port
@@ -54,6 +55,7 @@ interface ConvertOptions {
   empty?: boolean;
   flat?: boolean;
   serve?: boolean;
+  security?: boolean;  // Commander handles --no-security as security=false
   port?: string;
   jar?: string;
 }
@@ -143,6 +145,7 @@ program
   .option('--empty', 'Generate skeleton stubs with TODO placeholder response bodies')
   .option('--flat', 'Write a single mappings/__files folder instead of splitting by status class')
   .option('--serve', 'Start WireMock server after generating stubs')
+  .option('--no-security', 'Skip security scheme matchers (generate stubs without auth requirements)')
   .option('--port <port>', 'Port for WireMock server (default: 8080, used with --serve)')
   .option('--jar <path>', 'Path to WireMock standalone JAR (used with --serve)')
   .action(async (input: string, options: ConvertOptions) => {
@@ -180,6 +183,14 @@ program
       log('[info] Transforming to IR...');
       const records = transformSpec(spec);
       log(`[info] ${records.length} operations found`);
+
+      // Strip security matchers if --no-security
+      if (options.security === false) {
+        log('[info] --no-security: skipping auth matchers');
+        for (const record of records) {
+          delete record.securityMatchers;
+        }
+      }
 
       // Step 2.5: Filter by status (if --status provided)
       let filteredRecords = records;
