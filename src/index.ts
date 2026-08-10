@@ -15,6 +15,8 @@ export type { ParseOptions } from './parser/index.js';
 export { transformSpec } from './transformer/index.js';
 export { normalizeSchema } from './transformer/normalize-schema.js';
 export { extractRequestBody } from './transformer/extract-request-body.js';
+export { extractSecurityMatchers } from './transformer/extract-security.js';
+export type { SecurityMatcher } from './transformer/extract-security.js';
 
 export { generateURLPattern } from './url-patterns/index.js';
 export type { URLPatternResult } from './url-patterns/index.js';

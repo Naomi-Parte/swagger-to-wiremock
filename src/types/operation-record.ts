@@ -65,6 +65,14 @@ export interface OperationRecord {
   /** Content type for the request body */
   requestBodyContentType?: string;
 
+  /** Security matchers derived from securitySchemes (for auth header/query matching) */
+  securityMatchers?: Array<{
+    in: 'header' | 'query';
+    name: string;
+    pattern: string;
+    description: string;
+  }>;
+
   /** Response example (if present in spec) */
   responseExample?: unknown;
 

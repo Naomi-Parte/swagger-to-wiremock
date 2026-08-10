@@ -44,6 +44,19 @@ export function generateMappings(records: OperationRecord[], seed?: number): Wir
     if (record.contentType && methodCanHaveRequestBody(record.method)) {
       headers['Content-Type'] = { equalTo: record.contentType };
     }
+
+    // Add security scheme matchers
+    if (record.securityMatchers) {
+      for (const matcher of record.securityMatchers) {
+        if (matcher.in === 'header') {
+          headers[matcher.name] = { matches: matcher.pattern };
+        } else if (matcher.in === 'query') {
+          if (!request.queryParameters) request.queryParameters = {};
+          request.queryParameters[matcher.name] = { matches: matcher.pattern };
+        }
+      }
+    }
+
     if (Object.keys(headers).length > 0) {
       request.headers = headers;
     }

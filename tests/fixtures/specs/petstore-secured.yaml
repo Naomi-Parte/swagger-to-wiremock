@@ -1,0 +1,163 @@
+openapi: "3.0.3"
+info:
+  title: Petstore (Secured)
+  version: 1.0.0
+  description: Petstore with various security schemes
+
+security:
+  - bearerAuth: []
+
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      summary: List all pets (uses global bearer auth)
+      responses:
+        "200":
+          description: A list of pets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pet"
+    post:
+      operationId: createPet
+      summary: Create a pet (uses API key)
+      security:
+        - apiKeyHeader: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Pet"
+      responses:
+        "201":
+          description: Pet created
+
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      summary: Get a pet (uses basic auth)
+      security:
+        - basicAuth: []
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: A pet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+
+  /public/health:
+    get:
+      operationId: healthCheck
+      summary: Health check (no auth)
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /admin/stats:
+    get:
+      operationId: getStats
+      summary: Get stats (API key in query)
+      security:
+        - apiKeyQuery: []
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+
+  /oauth/resource:
+    get:
+      operationId: getOauthResource
+      summary: Get resource (OAuth2)
+      security:
+        - oauthFlow: [read]
+      responses:
+        "200":
+          description: Resource
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /mtls/resource:
+    get:
+      operationId: getMtlsResource
+      summary: Get resource (mTLS - should be skipped)
+      security:
+        - mtlsAuth: []
+      responses:
+        "200":
+          description: Resource
+          content:
+            application/json:
+              schema:
+                type: object
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+    basicAuth:
+      type: http
+      scheme: basic
+
+    apiKeyHeader:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+    apiKeyQuery:
+      type: apiKey
+      in: query
+      name: api_key
+
+    oauthFlow:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: https://example.com/oauth/authorize
+          scopes:
+            read: Read access
+            write: Write access
+
+    mtlsAuth:
+      type: mutualTLS
+
+  schemas:
+    Pet:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+        name:
+          type: string

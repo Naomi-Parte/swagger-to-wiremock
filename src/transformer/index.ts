@@ -8,6 +8,7 @@ import type { OperationRecord } from '../types/operation-record.js';
 import { extractPathParamNames, extractOperationParams } from './extract-params.js';
 import { extractOperationResponses } from './extract-responses.js';
 import { extractRequestBody } from './extract-request-body.js';
+import { extractSecurityMatchers } from './extract-security.js';
 
 /**
  * Valid HTTP methods in OpenAPI
@@ -81,6 +82,9 @@ export function transformSpec(spec: Record<string, unknown>): OperationRecord[] 
       // Extract request body schema (for POST/PUT/PATCH body matching)
       const requestBody = extractRequestBody(operation);
 
+      // Extract security matchers from securitySchemes
+      const securityMatchers = extractSecurityMatchers(spec, operation);
+
       // Extract responses (one record per status code)
       const responses = extractOperationResponses(operation);
 
@@ -103,6 +107,7 @@ export function transformSpec(spec: Record<string, unknown>): OperationRecord[] 
           requestBodyRequired: requestBody?.required,
           requestBodyRequiredFields: requestBody?.requiredFields,
           requestBodyContentType: requestBody?.contentType,
+          securityMatchers: securityMatchers.length > 0 ? securityMatchers : undefined,
         };
 
         records.push(record);
