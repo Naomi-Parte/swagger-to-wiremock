@@ -2,13 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-08-10
 
 ### Added
 
-- **Swagger 2.0 auto-conversion** — Swagger 2.0 specs (YAML or JSON) are now automatically converted to OpenAPI 3.0 in-memory via `swagger2openapi` before entering the pipeline. No new flags required; the intermediate OpenAPI 3.0 document is never written to disk.
-- Info-level logs (`Swagger 2.0 detected — auto-converting to OpenAPI 3.0` / `Converted successfully. Proceeding with generation.`) shown at default verbosity, suppressed with `--quiet`, with additional `swagger2openapi` warnings surfaced under `--verbose`.
-- `ParserError` with code `SWAGGER2_CONVERSION_ERROR` and an actionable message when auto-conversion fails.
+- **Swagger 2.0 auto-conversion** — Swagger 2.0 specs (YAML or JSON) are now automatically converted to OpenAPI 3.0 in-memory via `swagger2openapi`. No new flags required.
+- **`--serve` flag + `serve` subcommand** — Start WireMock standalone directly after generation (`convert --serve`) or from existing stubs (`serve <dir>`). Includes `--port` and `--jar` flags, JAR auto-discovery, Java detection, and graceful Ctrl+C shutdown.
+- **OpenAPI 3.1 support** — Specs using `openapi: "3.1.x"` are now accepted. Type arrays (`type: ["string", "null"]`), `const`, `prefixItems`, and `$defs` are normalized for compatibility with json-schema-faker.
+- **Request body matchers** — POST/PUT/PATCH endpoints now generate `bodyPatterns` with `matchesJsonPath` assertions for required fields, ensuring WireMock only matches requests with the expected body structure.
+- **Security scheme matchers** — `securitySchemes` are resolved and produce request header/query matchers: Bearer (`Authorization: Bearer .+`), Basic (`Authorization: Basic .+`), API key (header or query), OAuth2, and OpenID Connect. mTLS is skipped gracefully (transport-layer).
+- **`--no-security` flag** — Skip security scheme matchers entirely for simplified testing.
+- **Global config** — `config set|get|unset|list` subcommand for persistent user settings (`~/.swagger-to-wiremock/config.json`). Set `jar` path once, never pass `--jar` again.
+
+### Changed
+
+- **JAR resolution priority chain** expanded: `--jar` flag → `WIREMOCK_JAR` env → global config → auto-detect in cwd/wiremock/lib.
+- **Version validation** now accepts OpenAPI 3.0.x and 3.1.x (previously rejected 3.1).
+- **Description** updated to reflect Swagger 2.0 + OpenAPI 3.1 support.
+
+### Fixed
+
+- Schemas with 3.1 type arrays no longer crash json-schema-faker.
+- JsonPath bracket notation for special-character field names uses `$['field']` (not `$.['field']`).
 
 ## [0.1.0] - 2026-08-07
 
@@ -32,22 +47,3 @@ All notable changes to this project will be documented in this file.
 - **`--verbose` / `--quiet`** — output verbosity control
 - **JSON and YAML input** — both produce byte-for-byte identical output
 - **Programmatic API** — all pipeline functions exported for library usage
-
-### Supported OpenAPI Features
-
-- OpenAPI 3.0.x specifications (YAML and JSON)
-- Path parameters with type/format-aware regex patterns
-- Required query parameters (enum → regex alternation)
-- Response examples (verbatim) and schemas (generated)
-- Multiple response status codes per operation
-- `$ref` resolution (local, remote, circular)
-- `allOf` / `oneOf` / `anyOf` schema composition
-
-### Not Yet Supported
-
-- Swagger 2.0 input (planned for v0.2.0 — use `swagger2openapi` to convert first)
-- OpenAPI 3.1 `type` arrays
-- Security scheme request matchers
-- Request body validation matchers
-- WireMock response templating
-- `x-wiremock-*` custom extensions

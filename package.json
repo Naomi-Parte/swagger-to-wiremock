@@ -1,7 +1,7 @@
 {
   "name": "swagger-to-wiremock",
   "version": "0.2.0",
-  "description": "Convert OpenAPI 3.0 specs into native WireMock JSON stub mappings — offline, deterministic, zero config",
+  "description": "Convert OpenAPI 3.x / Swagger 2.0 specs into native WireMock JSON stub mappings — offline, deterministic, zero config",
   "type": "module",
   "main": "./dist/index.js",
   "exports": {
@@ -52,6 +52,7 @@
   "keywords": [
     "openapi",
     "wiremock",
+    "swagger",
     "mocking",
     "api",
     "stub"
