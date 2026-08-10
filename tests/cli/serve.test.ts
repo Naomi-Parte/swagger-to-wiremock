@@ -37,7 +37,10 @@ function runCli(args: string[], timeout = 5000): RunResult {
     const execError = error as { stdout?: string; stderr?: string; status?: number | null };
     return {
       stdout: execError.stdout ?? '',
-      stderr: execError.stderr ?? '',
+      stderr: execError.stderr ?? (
+        // On timeout or signal kill, stderr may be on the error message itself
+        error instanceof Error ? error.message : ''
+      ),
       status: execError.status ?? 1,
     };
   }

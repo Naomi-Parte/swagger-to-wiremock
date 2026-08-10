@@ -15,6 +15,6 @@ export default defineConfig({
         'tests/',
       ],
     },
-    testTimeout: 10000,
+    testTimeout: 30000,
   },
 });

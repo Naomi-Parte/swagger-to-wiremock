@@ -53,6 +53,18 @@ export interface OperationRecord {
     required: boolean;
   }>;
 
+  /** Request body schema (for POST/PUT/PATCH body matching) */
+  requestBodySchema?: Record<string, unknown>;
+
+  /** Whether the request body is required */
+  requestBodyRequired?: boolean;
+
+  /** Required field names from the request body schema */
+  requestBodyRequiredFields?: string[];
+
+  /** Content type for the request body */
+  requestBodyContentType?: string;
+
   /** Response example (if present in spec) */
   responseExample?: unknown;
 

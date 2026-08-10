@@ -7,6 +7,7 @@ import { randomBytes } from 'crypto';
 import type { OperationRecord } from '../types/operation-record.js';
 import { extractPathParamNames, extractOperationParams } from './extract-params.js';
 import { extractOperationResponses } from './extract-responses.js';
+import { extractRequestBody } from './extract-request-body.js';
 
 /**
  * Valid HTTP methods in OpenAPI
@@ -77,6 +78,9 @@ export function transformSpec(spec: Record<string, unknown>): OperationRecord[] 
         pathParamNames,
       );
 
+      // Extract request body schema (for POST/PUT/PATCH body matching)
+      const requestBody = extractRequestBody(operation);
+
       // Extract responses (one record per status code)
       const responses = extractOperationResponses(operation);
 
@@ -95,6 +99,10 @@ export function transformSpec(spec: Record<string, unknown>): OperationRecord[] 
           responseExample: example,
           responseSchema: schema,
           contentType,
+          requestBodySchema: requestBody?.schema,
+          requestBodyRequired: requestBody?.required,
+          requestBodyRequiredFields: requestBody?.requiredFields,
+          requestBodyContentType: requestBody?.contentType,
         };
 
         records.push(record);

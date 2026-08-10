@@ -104,14 +104,14 @@ function resolveWireMockRootDirs(rootDir: string, verbose: boolean): string[] {
 export function startServer(options: ServerOptions): ServerProcess {
   const { rootDir, port = 8080, jarPath, verbose = false } = options;
 
-  // 1. Detect Java
-  const javaCmd = detectJava(verbose);
-
-  // 2. Resolve JAR
+  // 1. Resolve JAR (fast — file system check only)
   const resolvedJar = resolveJarPath({ explicitPath: jarPath, verbose });
 
-  // 3. Validate stubs directory
+  // 2. Validate stubs directory (fast — file system check only)
   const wireMockRoots = resolveWireMockRootDirs(rootDir, verbose);
+
+  // 3. Detect Java (slow — spawns a child process)
+  const javaCmd = detectJava(verbose);
 
   // 4. Build WireMock command-line args
   const args = ['-jar', resolvedJar, '--port', String(port)];

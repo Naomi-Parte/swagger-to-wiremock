@@ -14,6 +14,7 @@ export type { ParseOptions } from './parser/index.js';
 
 export { transformSpec } from './transformer/index.js';
 export { normalizeSchema } from './transformer/normalize-schema.js';
+export { extractRequestBody } from './transformer/extract-request-body.js';
 
 export { generateURLPattern } from './url-patterns/index.js';
 export type { URLPatternResult } from './url-patterns/index.js';
@@ -21,6 +22,7 @@ export { getPathParamPattern, PATH_PARAM_PATTERNS } from './url-patterns/path-pa
 
 export { generateResponseBody } from './generator/response-builder.js';
 export { generateMappings } from './generator/index.js';
+export { buildBodyPatterns } from './generator/body-pattern-builder.js';
 export { writeStubs } from './writer/index.js';
 export type { WriteOptions, WriteResult } from './writer/index.js';
 

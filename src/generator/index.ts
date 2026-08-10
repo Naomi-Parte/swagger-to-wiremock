@@ -10,6 +10,7 @@ import type { WireMockRequest } from '../types/wiremock-request.js';
 import type { WireMockResponse } from '../types/wiremock-response.js';
 import { generateURLPattern } from '../url-patterns/index.js';
 import { createSeededRandom } from './seeded-random.js';
+import { buildBodyPatterns } from './body-pattern-builder.js';
 
 /**
  * Generate WireMock mappings from operation records.
@@ -31,6 +32,12 @@ export function generateMappings(records: OperationRecord[], seed?: number): Wir
     const queryParameters = buildQueryParameters(record);
     if (queryParameters) {
       request.queryParameters = queryParameters;
+    }
+
+    // Add body patterns for POST/PUT/PATCH with request body schemas
+    const bodyPatterns = buildBodyPatterns(record);
+    if (bodyPatterns) {
+      request.bodyPatterns = bodyPatterns;
     }
 
     const headers: Record<string, { equalTo?: string; matches?: string }> = {};
