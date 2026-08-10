@@ -3,12 +3,14 @@
  * @description Resolves the WireMock standalone JAR location using a priority chain:
  *   1. Explicit --jar flag
  *   2. WIREMOCK_JAR environment variable
- *   3. Auto-detect in common locations relative to cwd
+ *   3. Global config (~/.swagger-to-wiremock/config.json)
+ *   4. Auto-detect in common locations relative to cwd
  */
 
 import { accessSync, constants, readdirSync } from 'fs';
 import { join, resolve, isAbsolute } from 'path';
 import { ServerError } from '../errors/server-error.js';
+import { getConfig } from '../config/index.js';
 import type { JarResolverOptions } from './types.js';
 
 /** Glob-like pattern directories to search for a WireMock JAR */
@@ -54,7 +56,8 @@ function findJarInDir(dir: string): string | undefined {
  * Resolve the WireMock JAR path using the priority chain:
  *   1. Explicit path (--jar flag)
  *   2. WIREMOCK_JAR environment variable
- *   3. Auto-detect in cwd and common relative directories
+ *   3. Global config (~/.swagger-to-wiremock/config.json)
+ *   4. Auto-detect in cwd and common relative directories
  *
  * @throws {ServerError} JAR_NOT_FOUND if no JAR can be located
  */
@@ -89,7 +92,23 @@ export function resolveJarPath(options: JarResolverOptions = {}): string {
     return resolved;
   }
 
-  // Priority 3: Auto-detect in common locations
+  // Priority 3: Global config
+  const configJar = getConfig('jar');
+  if (configJar && typeof configJar === 'string') {
+    const resolved = isAbsolute(configJar) ? configJar : resolve(cwd, configJar);
+    if (verbose) console.log(`[server] Checking global config JAR: ${resolved}`);
+    if (!fileExists(resolved)) {
+      throw new ServerError(
+        'JAR_NOT_FOUND',
+        `WireMock JAR not found at configured path: ${resolved}\n` +
+          'Update with: swagger-to-wiremock config set jar <path>',
+        { path: resolved, source: 'global config' },
+      );
+    }
+    return resolved;
+  }
+
+  // Priority 4: Auto-detect in common locations
   if (verbose) console.log(`[server] Searching for WireMock JAR in common locations...`);
   for (const searchDir of SEARCH_DIRS) {
     const dir = resolve(cwd, searchDir);
@@ -103,6 +122,7 @@ export function resolveJarPath(options: JarResolverOptions = {}): string {
   throw new ServerError(
     'JAR_NOT_FOUND',
     'WireMock JAR not found. Provide a path with --jar, set WIREMOCK_JAR env variable, ' +
+      'run "swagger-to-wiremock config set jar <path>" to set globally, ' +
       'or place the JAR in ./wiremock/ or ./lib/.\n' +
       'Download: https://wiremock.org/docs/download-and-installation/',
     { searchedDirs: SEARCH_DIRS.map((d) => resolve(cwd, d)) },

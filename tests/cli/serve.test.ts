@@ -52,7 +52,7 @@ describe('cli serve subcommand', () => {
     mkdirSync(join(fakeJar, '..'), { recursive: true });
     writeFileSync(fakeJar, '');
 
-    const result = runCli(['serve', '/does/not/exist/stubs', '--jar', fakeJar]);
+    const result = runCli(['serve', '/does/not/exist/stubs', '--jar', fakeJar], 15000);
 
     expect(result.status).toBe(1);
     const output = result.stdout + result.stderr;

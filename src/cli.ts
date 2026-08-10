@@ -15,6 +15,7 @@ import { ServerError } from './errors/server-error.js';
 import { parseStatusFilter, filterByStatus } from './filters/status-filter.js';
 import { synthesisePlaceholderRecords, extractSpecificCodes } from './filters/placeholder-generator.js';
 import { startServer } from './server/index.js';
+import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
 
 const version = '0.2.0';
 
@@ -34,6 +35,11 @@ Examples:
   $ swagger-to-wiremock convert ./api.yaml --serve --port 9090 # Generate + serve on custom port
   $ swagger-to-wiremock serve ./wiremock-stubs                 # Start server from existing stubs
   $ swagger-to-wiremock serve ./wiremock-stubs --port 9090     # Serve on custom port
+  $ swagger-to-wiremock config set jar /path/to/wiremock.jar   # Set JAR path globally
+  $ swagger-to-wiremock config set port 9090                   # Set default port
+  $ swagger-to-wiremock config get jar                         # Show configured JAR path
+  $ swagger-to-wiremock config unset jar                       # Remove JAR config
+  $ swagger-to-wiremock config list                            # Show all config
 `;
 
 interface ConvertOptions {
@@ -314,6 +320,79 @@ program
         console.error('Run with -v for full stack trace');
       }
       process.exit(1);
+    }
+  });
+
+// ─── config subcommand ───────────────────────────────────────────────────────
+
+const configCmd = program
+  .command('config')
+  .description('Manage global configuration (~/.swagger-to-wiremock/config.json)');
+
+configCmd
+  .command('set <key> <value>')
+  .description('Set a global config value (valid keys: jar, port)')
+  .action((key: string, value: string) => {
+    if (!isValidKey(key)) {
+      console.error(`❌ Unknown config key: "${key}". Valid keys: ${getValidKeys().join(', ')}`);
+      process.exit(1);
+    }
+
+    try {
+      setConfig(key, value);
+      console.log(`✅ Set ${key} = ${value}`);
+    } catch (error) {
+      console.error(`❌ ${error instanceof Error ? error.message : String(error)}`);
+      process.exit(1);
+    }
+  });
+
+configCmd
+  .command('get <key>')
+  .description('Get a global config value')
+  .action((key: string) => {
+    if (!isValidKey(key)) {
+      console.error(`❌ Unknown config key: "${key}". Valid keys: ${getValidKeys().join(', ')}`);
+      process.exit(1);
+    }
+
+    const value = getConfig(key);
+    if (value === undefined) {
+      console.log(`${key}: (not set)`);
+    } else {
+      console.log(`${key}: ${value}`);
+    }
+  });
+
+configCmd
+  .command('unset <key>')
+  .description('Remove a global config value')
+  .action((key: string) => {
+    if (!isValidKey(key)) {
+      console.error(`❌ Unknown config key: "${key}". Valid keys: ${getValidKeys().join(', ')}`);
+      process.exit(1);
+    }
+
+    unsetConfig(key);
+    console.log(`✅ Removed ${key}`);
+  });
+
+configCmd
+  .command('list')
+  .description('Show all global config values')
+  .action(() => {
+    const config = listConfig();
+    const entries = Object.entries(config);
+
+    if (entries.length === 0) {
+      console.log('No global config set.');
+      console.log(`Config file: ~/.swagger-to-wiremock/config.json`);
+      return;
+    }
+
+    console.log('Global config:');
+    for (const [key, value] of entries) {
+      console.log(`  ${key}: ${value}`);
     }
   });
 

@@ -41,3 +41,6 @@ export { getStatusClass, groupByStatusClass } from './filters/status-classifier.
 export { startServer, resolveJarPath } from './server/index.js';
 export type { ServerOptions, ServerProcess, JarResolverOptions } from './server/types.js';
 export { ServerError } from './errors/server-error.js';
+
+export { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
+export type { ConfigKey, GlobalConfig } from './config/index.js';
