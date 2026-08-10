@@ -11,10 +11,12 @@ import { transformSpec } from './transformer/index.js';
 import { generateMappings } from './generator/index.js';
 import { writeStubs } from './writer/index.js';
 import { ParserError } from './errors/parser-error.js';
+import { ServerError } from './errors/server-error.js';
 import { parseStatusFilter, filterByStatus } from './filters/status-filter.js';
 import { synthesisePlaceholderRecords, extractSpecificCodes } from './filters/placeholder-generator.js';
+import { startServer } from './server/index.js';
 
-const version = '0.0.1';
+const version = '0.2.0';
 
 const EXAMPLES = `
 Examples:
@@ -27,8 +29,11 @@ Examples:
   $ swagger-to-wiremock convert ./api.yaml --status 4xx,5xx    # Only error responses
   $ swagger-to-wiremock convert ./api.yaml --status 400,404    # Specific status codes
   $ swagger-to-wiremock convert ./api.yaml --empty             # Skeleton with TODO bodies
-  $ swagger-to-wiremock convert ./api.yaml --empty --status 400,401  # Skeleton for specific codes
   $ swagger-to-wiremock convert ./api.yaml --flat              # Single mappings/__files folder (no split)
+  $ swagger-to-wiremock convert ./api.yaml --serve             # Generate + start mock server
+  $ swagger-to-wiremock convert ./api.yaml --serve --port 9090 # Generate + serve on custom port
+  $ swagger-to-wiremock serve ./wiremock-stubs                 # Start server from existing stubs
+  $ swagger-to-wiremock serve ./wiremock-stubs --port 9090     # Serve on custom port
 `;
 
 interface ConvertOptions {
@@ -42,6 +47,16 @@ interface ConvertOptions {
   status?: string;
   empty?: boolean;
   flat?: boolean;
+  serve?: boolean;
+  port?: string;
+  jar?: string;
+}
+
+interface ServeOptions {
+  port?: string;
+  jar?: string;
+  verbose?: boolean;
+  quiet?: boolean;
 }
 
 /**
@@ -63,7 +78,7 @@ function formatFolderSummary(folderCounts: Record<string, number>): string {
 }
 
 /**
- * Format a caught error into a user-facing message, tailoring known ParserError
+ * Format a caught error into a user-facing message, tailoring known error
  * codes to friendlier text.
  * @param error - Error thrown by the pipeline
  * @returns Human-readable message (without the leading ❌)
@@ -78,7 +93,29 @@ function formatErrorMessage(error: unknown): string {
     }
   }
 
+  if (error instanceof ServerError) {
+    return error.message;
+  }
+
   return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Register Ctrl+C handler for graceful server shutdown.
+ */
+function registerShutdownHandler(
+  stopFn: () => void,
+  quiet: boolean,
+): void {
+  const handler = (): void => {
+    if (!quiet) console.log('\n[info] Shutting down WireMock...');
+    stopFn();
+    // Give it a moment to clean up, then exit
+    setTimeout(() => process.exit(0), 1000);
+  };
+
+  process.on('SIGINT', handler);
+  process.on('SIGTERM', handler);
 }
 
 program
@@ -99,6 +136,9 @@ program
   .option('--status <codes>', 'Filter by status code: 2xx, 4xx, 5xx, or specific codes (comma-separated)')
   .option('--empty', 'Generate skeleton stubs with TODO placeholder response bodies')
   .option('--flat', 'Write a single mappings/__files folder instead of splitting by status class')
+  .option('--serve', 'Start WireMock server after generating stubs')
+  .option('--port <port>', 'Port for WireMock server (default: 8080, used with --serve)')
+  .option('--jar <path>', 'Path to WireMock standalone JAR (used with --serve)')
   .action(async (input: string, options: ConvertOptions) => {
     if (options.helpExamples) {
       console.log(EXAMPLES);
@@ -165,7 +205,7 @@ program
       const mappings = generateMappings(filteredRecords, seed);
       log(`[info] ${mappings.length} mappings generated`);
 
-      // Step 4: Write to disk
+      // Step 4: Write to disk (skip if --dry-run + --serve, since there's nothing to serve)
       log('[info] Writing files...');
       const result = await writeStubs(mappings, filteredRecords, {
         outputDir: options.output,
@@ -192,7 +232,80 @@ program
         }
       }
 
+      // Step 5: Start server if --serve
+      if (options.serve) {
+        if (options.dryRun) {
+          if (!quiet) console.log('[info] --dry-run: skipping server start (no files written)');
+          process.exit(0);
+        }
+
+        const port = options.port ? parseInt(options.port, 10) : 8080;
+        if (Number.isNaN(port) || port < 1 || port > 65535) {
+          console.error('❌ Invalid port: must be a number between 1 and 65535');
+          process.exit(1);
+        }
+
+        if (!quiet) console.log(`\n[info] Starting WireMock on port ${port}...`);
+
+        const server = startServer({
+          rootDir: options.output,
+          port,
+          jarPath: options.jar,
+          verbose,
+        });
+
+        registerShutdownHandler(server.stop, quiet);
+
+        // Keep the process alive until WireMock exits
+        const exitCode = await server.waitForExit();
+        process.exit(exitCode ?? 0);
+      }
+
       process.exit(0);
+    } catch (error) {
+      console.error(`❌ ${formatErrorMessage(error)}`);
+      if (verbose && error instanceof Error && error.stack) {
+        console.error(error.stack);
+      } else {
+        console.error('Run with -v for full stack trace');
+      }
+      process.exit(1);
+    }
+  });
+
+program
+  .command('serve <dir>')
+  .description('Start WireMock server from existing generated stubs')
+  .option('-p, --port <port>', 'Port for WireMock server (default: 8080)')
+  .option('--jar <path>', 'Path to WireMock standalone JAR')
+  .option('-v, --verbose', 'Enable verbose logging')
+  .option('-q, --quiet', 'Suppress all output except errors')
+  .action(async (dir: string, options: ServeOptions) => {
+    const verbose = options.quiet ? false : (options.verbose ?? false);
+    const quiet = options.quiet ?? false;
+
+    try {
+      const port = options.port ? parseInt(options.port, 10) : 8080;
+      if (Number.isNaN(port) || port < 1 || port > 65535) {
+        console.error('❌ Invalid port: must be a number between 1 and 65535');
+        process.exit(1);
+      }
+
+      if (!quiet) console.log(`[info] Starting WireMock from: ${dir}`);
+      if (!quiet) console.log(`[info] Port: ${port}`);
+
+      const server = startServer({
+        rootDir: dir,
+        port,
+        jarPath: options.jar,
+        verbose,
+      });
+
+      registerShutdownHandler(server.stop, quiet);
+
+      // Keep the process alive until WireMock exits
+      const exitCode = await server.waitForExit();
+      process.exit(exitCode ?? 0);
     } catch (error) {
       console.error(`❌ ${formatErrorMessage(error)}`);
       if (verbose && error instanceof Error && error.stack) {

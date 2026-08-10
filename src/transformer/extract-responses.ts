@@ -3,6 +3,8 @@
  * @description Extracts response examples and schemas from response definitions
  */
 
+import { normalizeSchema } from './normalize-schema.js';
+
 /**
  * Response extraction result
  */
@@ -101,7 +103,7 @@ export function extractOperationResponses(
       statusCode: finalStatusCode,
       contentType,
       example,
-      schema,
+      schema: schema !== undefined ? normalizeSchema(schema) : undefined,
     });
   });
 

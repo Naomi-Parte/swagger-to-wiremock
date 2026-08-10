@@ -13,6 +13,7 @@ export { parseOpenAPISpec } from './parser/index.js';
 export type { ParseOptions } from './parser/index.js';
 
 export { transformSpec } from './transformer/index.js';
+export { normalizeSchema } from './transformer/normalize-schema.js';
 
 export { generateURLPattern } from './url-patterns/index.js';
 export type { URLPatternResult } from './url-patterns/index.js';
@@ -34,3 +35,7 @@ export {
   createPlaceholderBody,
 } from './filters/placeholder-generator.js';
 export { getStatusClass, groupByStatusClass } from './filters/status-classifier.js';
+
+export { startServer, resolveJarPath } from './server/index.js';
+export type { ServerOptions, ServerProcess, JarResolverOptions } from './server/types.js';
+export { ServerError } from './errors/server-error.js';

@@ -34,7 +34,7 @@ export async function convertSwagger2ToOpenApi3(
       warnOnly: true, // don't throw on non-critical issues
     });
 
-    const warnings = (result.warnings ?? []).map((warning) =>
+    const warnings = (result.warnings ?? []).map((warning: unknown) =>
       typeof warning === 'string' ? warning : JSON.stringify(warning),
     );
 

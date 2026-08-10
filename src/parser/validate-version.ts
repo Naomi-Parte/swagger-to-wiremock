@@ -1,6 +1,6 @@
 /**
  * @file Validate OpenAPI version
- * @description Ensures spec is OpenAPI 3.0.x, rejects 2.0 and 3.1
+ * @description Ensures spec is OpenAPI 3.0.x or 3.1.x, rejects 2.0
  */
 
 import { ParserError } from '../errors/parser-error.js';
@@ -52,8 +52,8 @@ export function validateOpenAPIVersion(spec: Record<string, unknown>): string {
   const version = extractVersion(spec);
   const { major, minor } = parseVersion(version);
 
-  // Support only OpenAPI 3.0.x
-  if (major === 3 && minor === 0) {
+  // Support OpenAPI 3.0.x and 3.1.x
+  if (major === 3 && (minor === 0 || minor === 1)) {
     return version;
   }
 
@@ -66,19 +66,10 @@ export function validateOpenAPIVersion(spec: Record<string, unknown>): string {
     );
   }
 
-  // Specific message for OpenAPI 3.1
-  if (major === 3 && minor === 1) {
-    throw new ParserError(
-      'UNSUPPORTED_VERSION',
-      `OpenAPI 3.1.x is not yet supported. Please use OpenAPI 3.0.x instead.`,
-      { version, major, minor },
-    );
-  }
-
   // Generic message for other versions
   throw new ParserError(
     'UNSUPPORTED_VERSION',
-    `OpenAPI version ${version} is not supported. Supported: 3.0.0–3.0.3`,
+    `OpenAPI version ${version} is not supported. Supported: 3.0.x, 3.1.x`,
     { version, major, minor },
   );
 }
