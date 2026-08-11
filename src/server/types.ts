@@ -31,3 +31,15 @@ export interface ServerProcess {
   /** Wait for the process to exit */
   waitForExit: () => Promise<number | null>;
 }
+
+/** Entry in the background server registry (~/.swagger-to-wiremock/servers.json) */
+export interface ServerRegistryEntry {
+  /** Port the server is running on */
+  port: number;
+  /** OS process ID */
+  pid: number;
+  /** Directory being served (stubs root) */
+  rootDir: string;
+  /** ISO timestamp when the server was started */
+  startedAt: string;
+}

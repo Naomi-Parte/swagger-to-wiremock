@@ -13,6 +13,7 @@ import type { ServerOptions, ServerProcess } from './types.js';
 
 export type { ServerOptions, ServerProcess } from './types.js';
 export { resolveJarPath } from './jar-resolver.js';
+export { spawnBackground, getServerStatus, stopServer, stopAllServers, isPortOccupied } from './process-manager.js';
 
 /**
  * Detect if Java is available on the system.

@@ -6,6 +6,8 @@
  */
 
 import { program } from 'commander';
+import { resolve, join } from 'path';
+import { execFileSync } from 'child_process';
 import { parseOpenAPISpec } from './parser/index.js';
 import { transformSpec } from './transformer/index.js';
 import { generateMappings } from './generator/index.js';
@@ -14,7 +16,8 @@ import { ParserError } from './errors/parser-error.js';
 import { ServerError } from './errors/server-error.js';
 import { parseStatusFilter, filterByStatus } from './filters/status-filter.js';
 import { synthesisePlaceholderRecords, extractSpecificCodes } from './filters/placeholder-generator.js';
-import { startServer } from './server/index.js';
+import { startServer, resolveJarPath } from './server/index.js';
+import { isPortOccupied, spawnBackground, getServerStatus, stopServer, stopAllServers } from './server/process-manager.js';
 import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
 
 const version = '0.2.0';
@@ -63,6 +66,7 @@ interface ConvertOptions {
 interface ServeOptions {
   port?: string;
   jar?: string;
+  background?: boolean;
   verbose?: boolean;
   quiet?: boolean;
 }
@@ -294,6 +298,7 @@ program
   .command('serve <dir>')
   .description('Start WireMock server from existing generated stubs')
   .option('-p, --port <port>', 'Port for WireMock server (default: 8080)')
+  .option('-b, --background', 'Start server in background (detach, return immediately)')
   .option('--jar <path>', 'Path to WireMock standalone JAR')
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Suppress all output except errors')
@@ -310,6 +315,38 @@ program
 
       if (!quiet) console.log(`[info] Starting WireMock from: ${dir}`);
       if (!quiet) console.log(`[info] Port: ${port}`);
+
+      // Background mode: spawn detached and exit immediately
+      if (options.background) {
+        // Check port conflict
+        const portCheck = isPortOccupied(port);
+        if (portCheck.occupied && portCheck.entry) {
+          console.error(
+            `❌ Port ${port} is already in use (PID: ${portCheck.entry.pid}, stubs: ${portCheck.entry.rootDir})`,
+          );
+          process.exit(1);
+        }
+
+        // Resolve JAR path
+        const resolvedJar = resolveJarPath({ explicitPath: options.jar, verbose });
+
+        // Detect Java
+        const javaHome = process.env['JAVA_HOME'];
+        const javaCandidates = javaHome ? [join(javaHome, 'bin', 'java'), 'java'] : ['java'];
+        const javaCmd = javaCandidates.find((cmd) => {
+          try { execFileSync(cmd, ['-version'], { stdio: 'pipe' }); return true; } catch { return false; }
+        });
+        if (!javaCmd) {
+          console.error('❌ Java is required to run WireMock but was not found on your PATH.');
+          process.exit(1);
+        }
+
+        const args = ['-jar', resolvedJar, '--port', String(port), '--root-dir', resolve(dir)];
+        const pid = spawnBackground(javaCmd, args, { port, rootDir: resolve(dir) });
+
+        console.log(`✅ WireMock started on port ${port} (PID: ${pid})`);
+        process.exit(0);
+      }
 
       const server = startServer({
         rootDir: dir,
@@ -404,6 +441,78 @@ configCmd
     console.log('Global config:');
     for (const [key, value] of entries) {
       console.log(`  ${key}: ${value}`);
+    }
+  });
+
+// ─── status subcommand ───────────────────────────────────────────────────────
+
+program
+  .command('status')
+  .description('List running background WireMock servers')
+  .action(() => {
+    const servers = getServerStatus();
+
+    if (servers.length === 0) {
+      console.log('No running WireMock servers.');
+      return;
+    }
+
+    console.log('Running servers:');
+    console.log('');
+    console.log('  PORT   PID       STUBS DIR                        STARTED');
+    console.log('  ────   ───       ─────────                        ───────');
+
+    for (const entry of servers) {
+      const status = entry.alive ? '' : ' (dead)';
+      const started = entry.startedAt.replace('T', ' ').replace(/\.\d+Z$/, '');
+      const port = String(entry.port).padEnd(6);
+      const pid = String(entry.pid).padEnd(9);
+      const rootDir = entry.rootDir.length > 32
+        ? '...' + entry.rootDir.slice(-29)
+        : entry.rootDir.padEnd(32);
+      console.log(`  ${port} ${pid} ${rootDir} ${started}${status}`);
+    }
+
+    console.log('');
+  });
+
+// ─── stop subcommand ─────────────────────────────────────────────────────────
+
+program
+  .command('stop [port]')
+  .description('Stop a background WireMock server by port, or --all to stop all')
+  .option('-a, --all', 'Stop all running servers')
+  .action((port: string | undefined, options: { all?: boolean }) => {
+    if (options.all) {
+      const count = stopAllServers();
+      if (count === 0) {
+        console.log('No running WireMock servers to stop.');
+      } else {
+        console.log(`✅ Stopped ${count} WireMock server${count > 1 ? 's' : ''}`);
+      }
+      return;
+    }
+
+    if (!port) {
+      console.error('❌ Please specify a port to stop, or use --all to stop all servers.');
+      console.error('   Usage: stw stop <port>');
+      console.error('   Usage: stw stop --all');
+      process.exit(1);
+    }
+
+    const portNum = parseInt(port, 10);
+    if (Number.isNaN(portNum)) {
+      console.error(`❌ Invalid port: "${port}". Must be a number.`);
+      process.exit(1);
+    }
+
+    const result = stopServer(portNum);
+    if (result.success && result.entry) {
+      console.log(`✅ Stopped WireMock on port ${portNum} (PID: ${result.entry.pid})`);
+    } else {
+      console.error(`❌ No running server found on port ${portNum}.`);
+      console.error('   Run "stw status" to see active servers.');
+      process.exit(1);
     }
   });
 
