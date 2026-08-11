@@ -11,7 +11,8 @@
     }
   },
   "bin": {
-    "swagger-to-wiremock": "./dist/cli.js"
+    "swagger-to-wiremock": "./dist/cli.js",
+    "stw": "./dist/cli.js"
   },
   "files": [
     "dist",
