@@ -23,6 +23,7 @@
   "scripts": {
     "build": "tsup",
     "build:watch": "tsup --watch",
+    "build:bin": "pkg . -t node22-win-x64 -o ./bin/stw && pkg . -t node22-linux-x64 -o ./bin/stw-linux && pkg . -t node22-macos-x64 -o ./bin/stw-macos",
     "dev": "tsup --watch --onSuccess 'node dist/cli.js'",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -43,6 +44,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.14.0",
     "@types/swagger2openapi": "^7.0.4",
+    "@yao-pkg/pkg": "^6.0.0",
     "tsup": "^8.0.0",
     "typescript": "^5.5.0",
     "vitest": "^4.1.10"
@@ -67,5 +69,11 @@
   "homepage": "https://github.com/naomi-parte/swagger-to-wiremock#readme",
   "bugs": {
     "url": "https://github.com/naomi-parte/swagger-to-wiremock/issues"
+  },
+  "pkg": {
+    "targets": ["node22-win-x64", "node22-linux-x64", "node22-macos-x64"],
+    "outputPath": "bin",
+    "assets": [],
+    "scripts": ["dist/**/*.js"]
   }
 }

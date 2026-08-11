@@ -144,3 +144,6 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
 tmp
+
+# Binary build output
+bin/
