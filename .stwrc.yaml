@@ -1,0 +1,4 @@
+output: ./wiremock-stubs
+seed: 42
+flat: true
+no-security: true

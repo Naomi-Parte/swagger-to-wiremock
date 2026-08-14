@@ -153,3 +153,5 @@ export function listConfig(): GlobalConfig {
 export function getValidKeys(): readonly ConfigKey[] {
   return VALID_KEYS;
 }
+
+export { loadProjectConfig, mergeWithCliOptions } from './project-config.js';

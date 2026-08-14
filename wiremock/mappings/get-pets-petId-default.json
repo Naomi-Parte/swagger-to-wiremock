@@ -1,0 +1,19 @@
+{
+  "id": "569852ba-4b73-47b1-bee3-6e8b4b19b250",
+  "name": "GET /pets/{petId} - default",
+  "priority": 100,
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/pets/[^/]+"
+  },
+  "response": {
+    "status": 500,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "bodyFileName": "get-pets-petId-default.json"
+  },
+  "metadata": {
+    "operationId": "showPetById"
+  }
+}

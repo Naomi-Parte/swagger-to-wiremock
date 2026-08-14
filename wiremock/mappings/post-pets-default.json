@@ -1,0 +1,32 @@
+{
+  "id": "484b13a8-aeb1-4d16-b16e-f1231c045c7b",
+  "name": "POST /pets - default",
+  "priority": 100,
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/pets",
+    "bodyPatterns": [
+      {
+        "matchesJsonPath": "$.id"
+      },
+      {
+        "matchesJsonPath": "$.name"
+      }
+    ],
+    "headers": {
+      "Content-Type": {
+        "equalTo": "application/json"
+      }
+    }
+  },
+  "response": {
+    "status": 500,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "bodyFileName": "post-pets-default.json"
+  },
+  "metadata": {
+    "operationId": "createPets"
+  }
+}

@@ -19,6 +19,7 @@ import { synthesisePlaceholderRecords, extractSpecificCodes } from './filters/pl
 import { startServer, resolveJarPath } from './server/index.js';
 import { isPortOccupied, spawnBackground, getServerStatus, stopServer, stopAllServers } from './server/process-manager.js';
 import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
+import { loadProjectConfig, mergeWithCliOptions } from './config/project-config.js';
 
 const version = '0.2.0';
 
@@ -158,16 +159,42 @@ program
       process.exit(0);
     }
 
-    const verbose = options.quiet ? false : (options.verbose ?? false);
-    const quiet = options.quiet ?? false;
+    // ─── Load project config and merge ───────────────────────────────────
+    const { config: projectConfig, source: projectConfigSource } = loadProjectConfig();
+
+    const cliDefaults: Record<string, unknown> = {
+      output: './wiremock',
+      seed: undefined,
+      verbose: undefined,
+      quiet: undefined,
+      clean: true,
+      dryRun: undefined,
+      status: undefined,
+      empty: undefined,
+      flat: undefined,
+      serve: undefined,
+      security: true,
+      port: undefined,
+      jar: undefined,
+    };
+
+    const merged = mergeWithCliOptions(projectConfig, options as unknown as Record<string, unknown>, cliDefaults) as unknown as ConvertOptions;
+
+    const verbose = merged.quiet ? false : (merged.verbose ?? false);
+    const quiet = merged.quiet ?? false;
     const log = (message: string): void => {
       if (verbose) console.log(message);
     };
 
     try {
+      // Log project config source if found
+      if (projectConfigSource) {
+        log(`[info] Using config: ${projectConfigSource}`);
+      }
+
       let seed = 42;
-      if (options.seed !== undefined) {
-        seed = parseInt(options.seed, 10);
+      if (merged.seed !== undefined) {
+        seed = parseInt(merged.seed, 10);
         if (Number.isNaN(seed)) {
           console.error('❌ Invalid seed value: must be a number');
           console.error('Run with -v for full stack trace');
@@ -176,7 +203,7 @@ program
       }
 
       log(`[info] Input: ${input}`);
-      log(`[info] Output: ${options.output}`);
+      log(`[info] Output: ${merged.output}`);
       log(`[info] Seed: ${seed}`);
 
       // Step 1: Parse
@@ -189,7 +216,7 @@ program
       log(`[info] ${records.length} operations found`);
 
       // Strip security matchers if --no-security
-      if (options.security === false) {
+      if (merged.security === false) {
         log('[info] --no-security: skipping auth matchers');
         for (const record of records) {
           delete record.securityMatchers;
@@ -199,10 +226,10 @@ program
       // Step 2.5: Filter by status (if --status provided)
       let filteredRecords = records;
       let isPlaceholderMode = false;
-      if (options.status) {
-        const filters = parseStatusFilter(options.status);
+      if (merged.status) {
+        const filters = parseStatusFilter(merged.status);
         filteredRecords = filterByStatus(records, filters);
-        log(`[info] Status filter: ${options.status} → ${filteredRecords.length}/${records.length} records`);
+        log(`[info] Status filter: ${merged.status} → ${filteredRecords.length}/${records.length} records`);
 
         if (filteredRecords.length === 0) {
           const specificCodes = extractSpecificCodes(filters);
@@ -215,7 +242,7 @@ program
             log(`[info] ${filteredRecords.length} placeholder mappings generated`);
             isPlaceholderMode = true;
           } else {
-            console.warn(`⚠️ No operations match status filter "${options.status}"`);
+            console.warn(`⚠️ No operations match status filter "${merged.status}"`);
             process.exit(0);
           }
         }
@@ -229,17 +256,17 @@ program
       // Step 4: Write to disk (skip if --dry-run + --serve, since there's nothing to serve)
       log('[info] Writing files...');
       const result = await writeStubs(mappings, filteredRecords, {
-        outputDir: options.output,
-        clean: options.clean ?? true,
-        dryRun: options.dryRun ?? false,
+        outputDir: merged.output,
+        clean: merged.clean ?? true,
+        dryRun: merged.dryRun ?? false,
         seed,
-        empty: options.empty ?? false,
-        flat: options.flat ?? false,
+        empty: merged.empty ?? false,
+        flat: merged.flat ?? false,
       });
 
       // Summary
       if (!quiet) {
-        console.log(`✅ Generated ${mappings.length} mappings → ${options.output}`);
+        console.log(`✅ Generated ${mappings.length} mappings → ${merged.output}`);
         if (result.folderCounts) {
           console.log(`   Folders: ${formatFolderSummary(result.folderCounts)}`);
         } else {
@@ -247,20 +274,20 @@ program
           console.log(`   ${(result.totalBytes / 1024).toFixed(1)} KB total`);
         }
         if (isPlaceholderMode) {
-          console.log(`   ℹ️  Status ${options.status} not defined in spec — placeholder mappings generated`);
-        } else if (options.empty) {
+          console.log(`   ℹ️  Status ${merged.status} not defined in spec — placeholder mappings generated`);
+        } else if (merged.empty) {
           console.log('   ℹ️  Empty templates — populate __files/*.json with your responses');
         }
       }
 
       // Step 5: Start server if --serve
-      if (options.serve) {
-        if (options.dryRun) {
+      if (merged.serve) {
+        if (merged.dryRun) {
           if (!quiet) console.log('[info] --dry-run: skipping server start (no files written)');
           process.exit(0);
         }
 
-        const port = options.port ? parseInt(options.port, 10) : 8080;
+        const port = merged.port ? parseInt(merged.port, 10) : 8080;
         if (Number.isNaN(port) || port < 1 || port > 65535) {
           console.error('❌ Invalid port: must be a number between 1 and 65535');
           process.exit(1);
@@ -269,9 +296,9 @@ program
         if (!quiet) console.log(`\n[info] Starting WireMock on port ${port}...`);
 
         const server = startServer({
-          rootDir: options.output,
+          rootDir: merged.output,
           port,
-          jarPath: options.jar,
+          jarPath: merged.jar,
           verbose,
         });
 
