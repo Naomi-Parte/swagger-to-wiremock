@@ -9,7 +9,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
-import { join } from 'path';
+import { join, isAbsolute } from 'path';
 import { homedir } from 'os';
 
 /** Known configuration keys and their expected types */
@@ -95,6 +95,11 @@ export function setConfig(key: ConfigKey, value: string): void {
       throw new Error(`Invalid port value: ${value}. Must be a number between 1 and 65535.`);
     }
     config.port = numValue;
+  } else if (key === 'jar') {
+    if (!isAbsolute(value)) {
+      throw new Error(`Invalid jar path: "${value}". Global config requires an absolute path (e.g. /path/to/wiremock.jar or C:\\path\\to\\wiremock.jar).`);
+    }
+    config.jar = value;
   } else {
     (config as Record<string, unknown>)[key] = value;
   }
