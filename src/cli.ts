@@ -20,6 +20,7 @@ import { startServer, resolveJarPath } from './server/index.js';
 import { isPortOccupied, spawnBackground, getServerStatus, stopServer, stopAllServers } from './server/process-manager.js';
 import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
 import { loadProjectConfig, mergeWithCliOptions } from './config/project-config.js';
+import { initConfig } from './config/init.js';
 
 const version = '0.2.0';
 
@@ -469,6 +470,26 @@ configCmd
     for (const [key, value] of entries) {
       console.log(`  ${key}: ${value}`);
     }
+  });
+
+// ─── status subcommand ───────────────────────────────────────────────────────
+
+// ─── init subcommand ─────────────────────────────────────────────────────────
+
+program
+  .command('init')
+  .description('Generate a .stwrc.yaml config file with all options documented')
+  .option('-f, --force', 'Overwrite existing config file')
+  .action((options: { force?: boolean }) => {
+    const result = initConfig({ force: options.force });
+
+    if (!result.created) {
+      console.error(`⚠️  ${result.reason}`);
+      process.exit(1);
+    }
+
+    console.log(`✅ Created ${result.path}`);
+    console.log('   Edit the file to uncomment and set your preferred defaults.');
   });
 
 // ─── status subcommand ───────────────────────────────────────────────────────

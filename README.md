@@ -97,8 +97,22 @@ swagger-to-wiremock serve <dir> [options]
 Options:
   -p, --port <port>      WireMock port (default: 8080)
   --jar <path>           Path to WireMock standalone JAR
+  --background           Start server in background (detached)
   -v, --verbose          Show detailed logs
   -q, --quiet            Suppress output except errors
+
+swagger-to-wiremock status
+
+  List running background WireMock servers (port, PID, stubs dir, started time)
+
+swagger-to-wiremock stop [port]
+
+  Stop a background WireMock server by port, or all servers if no port given
+
+swagger-to-wiremock init [options]
+
+  Generate a .stwrc.yaml config file with all options documented
+  -f, --force            Overwrite existing config file
 
 swagger-to-wiremock config <set|get|unset|list> [key] [value]
 
@@ -110,32 +124,77 @@ swagger-to-wiremock config <set|get|unset|list> [key] [value]
   Valid keys: jar, port
 ```
 
+> **Tip:** The binary is also available as `stw` — a short alias that works
+> identically to `swagger-to-wiremock`. Use `stw convert`, `stw serve`, etc.
+
+## Project Configuration
+
+Teams can commit a `.stwrc.yaml` file to the repo so everyone uses the same defaults — no CLI flags needed.
+
+```bash
+# Scaffold a fully-documented config file
+stw init
+```
+
+This creates a `.stwrc.yaml` with all available options commented out and documented. Uncomment the ones you want:
+
+```yaml
+# .stwrc.yaml
+output: ./wiremock-stubs
+seed: 42
+flat: true
+status: 2xx,4xx
+no-security: true
+port: 9090
+```
+
+**Discovery order** (first match wins):
+1. `.stwrc.yaml` in cwd
+2. `.stwrc.yml` in cwd
+3. `.stwrc.json` in cwd
+4. Walk up to git root (checking each directory)
+5. `package.json` → `"swagger-to-wiremock"` key
+
+CLI flags always override config file values.
+
 ## Usage Examples
 
 ```bash
 # Basic generation
-npx swagger-to-wiremock convert ./api.yaml
+stw convert ./api.yaml
 
 # Generate + serve (one command workflow)
-npx swagger-to-wiremock convert ./api.yaml --serve --port 9090
+stw convert ./api.yaml --serve --port 9090
 
 # Swagger 2.0 spec (auto-converted)
-npx swagger-to-wiremock convert ./legacy-api-swagger2.yaml
+stw convert ./legacy-api-swagger2.yaml
 
 # Only error responses
-npx swagger-to-wiremock convert ./api.yaml --status 4xx,5xx
+stw convert ./api.yaml --status 4xx,5xx
 
 # Skeleton for testers to fill in
-npx swagger-to-wiremock convert ./api.yaml --empty
+stw convert ./api.yaml --empty
 
 # Skip auth matchers for easier testing
-npx swagger-to-wiremock convert ./api.yaml --no-security
+stw convert ./api.yaml --no-security
 
 # Set JAR path once (never pass --jar again)
-npx swagger-to-wiremock config set jar /path/to/wiremock-standalone-3.3.1.jar
+stw config set jar /path/to/wiremock-standalone-3.3.1.jar
 
 # Custom seed for different fake data
-npx swagger-to-wiremock convert ./api.yaml -s 99
+stw convert ./api.yaml -s 99
+
+# Start mock server in background from existing stubs
+stw serve ./wiremock-stubs --background
+
+# Check running servers
+stw status
+
+# Stop a server
+stw stop 8080
+
+# Initialize project config
+stw init
 ```
 
 ## Features
@@ -187,6 +246,18 @@ swagger-to-wiremock convert ./api.yaml --serve
 
 # Or serve existing stubs
 swagger-to-wiremock serve ./stubs/2xx --port 9090
+
+# Run in background (detached process)
+stw serve ./stubs --background
+
+# Check what's running
+stw status
+
+# Stop by port
+stw stop 9090
+
+# Stop all servers
+stw stop --all
 ```
 
 JAR resolution: `--jar` flag → `WIREMOCK_JAR` env → global config → auto-detect in ./wiremock/ or ./lib/

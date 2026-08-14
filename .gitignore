@@ -143,7 +143,12 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# Folders
 tmp
+wiremock
+
+# build
+.stwrc*
 
 # Binary build output
 bin/
