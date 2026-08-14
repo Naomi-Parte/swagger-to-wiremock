@@ -10,6 +10,8 @@ import type { OperationRecord } from '../types/operation-record.js';
 import { generateResponseBody } from '../generator/response-builder.js';
 import { createPlaceholderBody } from '../filters/placeholder-generator.js';
 import { getStatusClass } from '../filters/status-classifier.js';
+import { applyTemplateSubstitutions } from '../generator/template-builder.js';
+import type { TemplateSubstitution } from '../generator/template-builder.js';
 
 export interface WriteOptions {
   /** Output root directory (default: './wiremock') */
@@ -93,9 +95,24 @@ async function writeItemsToDir(
     const mappingPath = join(mappingsDir, item.bodyFileName);
     const bodyPath = join(filesDir, item.bodyFileName);
 
-    const mappingContent = `${JSON.stringify(item.mapping, null, 2)}\n`;
     const body = buildBody(item.record, empty, seed);
-    const bodyContent = typeof body === 'string' ? body : `${JSON.stringify(body, null, 2)}\n`;
+
+    // Apply template substitutions if present (from --templated mode)
+    const templateSubs = (item.mapping.response as unknown as Record<string, unknown>)['_templateSubstitutions'] as
+      | TemplateSubstitution[]
+      | undefined;
+
+    let bodyContent: string;
+    if (templateSubs && templateSubs.length > 0) {
+      bodyContent = `${applyTemplateSubstitutions(body, templateSubs)}\n`;
+    } else {
+      bodyContent = typeof body === 'string' ? body : `${JSON.stringify(body, null, 2)}\n`;
+    }
+
+    // Strip internal metadata before writing the mapping file
+    const mappingToWrite = { ...item.mapping, response: { ...item.mapping.response } };
+    delete (mappingToWrite.response as unknown as Record<string, unknown>)['_templateSubstitutions'];
+    const mappingContent = `${JSON.stringify(mappingToWrite, null, 2)}\n`;
 
     mappingFiles.push(mappingPath);
     bodyFiles.push(bodyPath);

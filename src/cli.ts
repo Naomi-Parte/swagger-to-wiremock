@@ -63,6 +63,7 @@ interface ConvertOptions {
   security?: boolean;  // Commander handles --no-security as security=false
   port?: string;
   jar?: string;
+  templated?: boolean;
 }
 
 interface ServeOptions {
@@ -154,6 +155,7 @@ program
   .option('--no-security', 'Skip security scheme matchers (generate stubs without auth requirements)')
   .option('--port <port>', 'Port for WireMock server (default: 8080, used with --serve)')
   .option('--jar <path>', 'Path to WireMock standalone JAR (used with --serve)')
+  .option('--templated', 'Use WireMock response templating (Handlebars) to echo request data in responses')
   .action(async (input: string, options: ConvertOptions) => {
     if (options.helpExamples) {
       console.log(EXAMPLES);
@@ -177,6 +179,7 @@ program
       security: true,
       port: undefined,
       jar: undefined,
+      templated: undefined,
     };
 
     const merged = mergeWithCliOptions(projectConfig, options as unknown as Record<string, unknown>, cliDefaults) as unknown as ConvertOptions;
@@ -251,7 +254,10 @@ program
 
       // Step 3: Generate mappings
       log('[info] Generating mappings...');
-      const mappings = generateMappings(filteredRecords, seed);
+      const mappings = generateMappings(filteredRecords, {
+        seed,
+        templated: merged.templated ?? false,
+      });
       log(`[info] ${mappings.length} mappings generated`);
 
       // Step 4: Write to disk (skip if --dry-run + --serve, since there's nothing to serve)

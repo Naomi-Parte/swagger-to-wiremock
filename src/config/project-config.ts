@@ -35,6 +35,7 @@ export interface ProjectConfig {
   quiet?: boolean;
   serve?: boolean;
   'dry-run'?: boolean;
+  templated?: boolean;
 }
 
 /** File names to search for, in priority order */
@@ -195,6 +196,7 @@ export function mergeWithCliOptions(
     quiet: 'quiet',
     serve: 'serve',
     'dry-run': 'dryRun',
+    templated: 'templated',
   };
 
   for (const [configKey, cliKey] of Object.entries(keyMap)) {

@@ -14,6 +14,12 @@ export interface WireMockResponse {
   /** Response headers (e.g., {"Content-Type": "application/json"}) */
   headers: Record<string, string>;
 
+  /** Inline response body string (used for templated responses with Handlebars expressions) */
+  body?: string;
+
+  /** WireMock response transformers (e.g., ["response-template"] for Handlebars templating) */
+  transformers?: string[];
+
   /** Inline JSON response body (mutually exclusive with bodyFileName) */
   jsonBody?: unknown;
 

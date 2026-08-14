@@ -11,16 +11,26 @@ import type { WireMockResponse } from '../types/wiremock-response.js';
 import { generateURLPattern } from '../url-patterns/index.js';
 import { createSeededRandom } from './seeded-random.js';
 import { buildBodyPatterns } from './body-pattern-builder.js';
+import { analyseTemplateSubstitutions } from './template-builder.js';
+
+export interface GenerateMappingsOptions {
+  /** Numeric seed for deterministic IDs (undefined = random) */
+  seed?: number;
+  /** When true, generate WireMock response-template stubs with Handlebars expressions */
+  templated?: boolean;
+}
 
 /**
  * Generate WireMock mappings from operation records.
  * @param records - Operation records to convert
- * @param seed - Optional numeric seed. When provided, mapping `id` values are generated
- *               deterministically; when omitted, ids are generated using `crypto.randomBytes`.
+ * @param options - Generation options (seed, templated, etc.)
  * @returns WireMock mappings
  */
-export function generateMappings(records: OperationRecord[], seed?: number): WireMockMapping[] {
-  const random = seed === undefined ? undefined : createSeededRandom(seed);
+export function generateMappings(records: OperationRecord[], options: GenerateMappingsOptions | number = {}): WireMockMapping[] {
+  // Backwards compat: accept bare seed number
+  const opts = typeof options === 'number' ? { seed: options } : options;
+  const random = opts.seed === undefined ? undefined : createSeededRandom(opts.seed);
+  const templated = opts.templated ?? false;
 
   return records.map((record) => {
     const urlPattern = generateURLPattern(record);
@@ -69,6 +79,16 @@ export function generateMappings(records: OperationRecord[], seed?: number): Wir
       },
       bodyFileName: fileName,
     };
+
+    // Templated mode: add response-template transformer
+    if (templated) {
+      const analysis = analyseTemplateSubstitutions(record);
+      if (analysis.hasTemplating) {
+        response.transformers = ['response-template'];
+        // Store substitution metadata so the writer can apply them to the body
+        (response as unknown as Record<string, unknown>)['_templateSubstitutions'] = analysis.substitutions;
+      }
+    }
 
     return {
       id: random ? generateSeededId(random) : generateId(),
