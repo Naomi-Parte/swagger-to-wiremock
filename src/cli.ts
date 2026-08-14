@@ -564,4 +564,4 @@ program
     }
   });
 
-program.parse();
+program.parseAsync();
