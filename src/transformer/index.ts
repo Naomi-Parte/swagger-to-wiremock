@@ -9,6 +9,7 @@ import { extractPathParamNames, extractOperationParams } from './extract-params.
 import { extractOperationResponses } from './extract-responses.js';
 import { extractRequestBody } from './extract-request-body.js';
 import { extractSecurityMatchers } from './extract-security.js';
+import { extractWireMockExtensions } from './extension-reader.js';
 
 /**
  * Valid HTTP methods in OpenAPI
@@ -85,6 +86,9 @@ export function transformSpec(spec: Record<string, unknown>): OperationRecord[] 
       // Extract security matchers from securitySchemes
       const securityMatchers = extractSecurityMatchers(spec, operation);
 
+      // Extract x-wiremock-* custom extensions
+      const extensions = extractWireMockExtensions(operation);
+
       // Extract responses (one record per status code)
       const responses = extractOperationResponses(operation);
 
@@ -108,6 +112,7 @@ export function transformSpec(spec: Record<string, unknown>): OperationRecord[] 
           requestBodyRequiredFields: requestBody?.requiredFields,
           requestBodyContentType: requestBody?.contentType,
           securityMatchers: securityMatchers.length > 0 ? securityMatchers : undefined,
+          extensions,
         };
 
         records.push(record);

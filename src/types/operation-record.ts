@@ -3,6 +3,8 @@
  * @description IR record representing one operation + status code before conversion to WireMock format
  */
 
+import type { WireMockExtensions } from '../transformer/extension-reader.js';
+
 /**
  * Internal representation of one OpenAPI operation with a specific status code
  * @description Intermediate format used during transformation stage to normalize OpenAPI data
@@ -81,4 +83,7 @@ export interface OperationRecord {
 
   /** Response Content-Type header */
   contentType: string;
+
+  /** Custom x-wiremock-* extension data (delay, priority, scenario) */
+  extensions?: WireMockExtensions;
 }

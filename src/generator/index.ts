@@ -90,7 +90,7 @@ export function generateMappings(records: OperationRecord[], options: GenerateMa
       }
     }
 
-    return {
+    const mapping: WireMockMapping = {
       id: random ? generateSeededId(random) : generateId(),
       name: `${record.method.toUpperCase()} ${record.path} - ${String(record.statusCode)}`,
       priority: getPriorityForStatus(record.statusCode),
@@ -100,6 +100,48 @@ export function generateMappings(records: OperationRecord[], options: GenerateMa
         operationId: record.operationId ?? record.id,
       },
     };
+
+    // Apply x-wiremock-* extensions
+    if (record.extensions) {
+      const ext = record.extensions;
+
+      // x-wiremock-priority overrides the computed priority
+      if (ext.priority !== undefined) {
+        mapping.priority = ext.priority;
+      }
+
+      // x-wiremock-delay
+      if (ext.delay) {
+        if (ext.delay.type === 'fixed' && ext.delay.milliseconds !== undefined) {
+          mapping.fixedDelayMilliseconds = ext.delay.milliseconds;
+        } else if (ext.delay.type === 'uniform') {
+          mapping.delayDistribution = {
+            type: 'uniform',
+            lower: ext.delay.lower,
+            upper: ext.delay.upper,
+          };
+        } else if (ext.delay.type === 'lognormal') {
+          mapping.delayDistribution = {
+            type: 'lognormal',
+            median: ext.delay.median,
+            sigma: ext.delay.sigma,
+          };
+        }
+      }
+
+      // x-wiremock-scenario
+      if (ext.scenario) {
+        mapping.scenarioName = ext.scenario.name;
+        if (ext.scenario.requiredState !== undefined) {
+          mapping.requiredScenarioState = ext.scenario.requiredState;
+        }
+        if (ext.scenario.newState !== undefined) {
+          mapping.newScenarioState = ext.scenario.newState;
+        }
+      }
+    }
+
+    return mapping;
   });
 }
 
