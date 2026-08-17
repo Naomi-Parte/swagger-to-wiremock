@@ -7,6 +7,7 @@
 
 import { program } from 'commander';
 import { resolve, join } from 'path';
+import { existsSync } from 'fs';
 import { execFileSync } from 'child_process';
 import { parseOpenAPISpec } from './parser/index.js';
 import { transformSpec } from './transformer/index.js';
@@ -21,6 +22,7 @@ import { isPortOccupied, spawnBackground, getServerStatus, stopServer, stopAllSe
 import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
 import { loadProjectConfig, mergeWithCliOptions } from './config/project-config.js';
 import { initConfig } from './config/init.js';
+import { createStubServerDir } from './server/stub-server.js';
 
 const version = '0.2.0';
 
@@ -41,6 +43,8 @@ Examples:
   $ swagger-to-wiremock convert ./api.yaml --serve --port 9090 # Generate + serve on custom port
   $ swagger-to-wiremock serve ./wiremock-stubs                 # Start server from existing stubs
   $ swagger-to-wiremock serve ./wiremock-stubs --port 9090     # Serve on custom port
+  $ swagger-to-wiremock serve --stub 200                       # Catch-all 200 server (no spec needed)
+  $ swagger-to-wiremock serve --stub 503 --port 3000           # Simulate downstream outage
   $ swagger-to-wiremock config set jar /path/to/wiremock.jar   # Set JAR path globally
   $ swagger-to-wiremock config set port 9090                   # Set default port
   $ swagger-to-wiremock config get jar                         # Show configured JAR path
@@ -69,6 +73,7 @@ interface ConvertOptions {
 interface ServeOptions {
   port?: string;
   jar?: string;
+  stub?: string;
   background?: boolean;
   verbose?: boolean;
   quiet?: boolean;
@@ -329,14 +334,15 @@ program
   });
 
 program
-  .command('serve <dir>')
-  .description('Start WireMock server from existing generated stubs')
+  .command('serve [target]')
+  .description('Start WireMock server from stubs directory, spec file, or catch-all stub (--stub)')
   .option('-p, --port <port>', 'Port for WireMock server (default: 8080)')
   .option('-b, --background', 'Start server in background (detach, return immediately)')
   .option('--jar <path>', 'Path to WireMock standalone JAR')
+  .option('--stub <status>', 'Start a catch-all server returning the given HTTP status code (e.g. --stub 200)')
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Suppress all output except errors')
-  .action(async (dir: string, options: ServeOptions) => {
+  .action(async (target: string | undefined, options: ServeOptions) => {
     const verbose = options.quiet ? false : (options.verbose ?? false);
     const quiet = options.quiet ?? false;
 
@@ -345,6 +351,31 @@ program
       if (Number.isNaN(port) || port < 1 || port > 65535) {
         console.error('❌ Invalid port: must be a number between 1 and 65535');
         process.exit(1);
+      }
+
+      // Determine the root directory to serve
+      let dir: string;
+
+      if (options.stub) {
+        // --stub mode: generate a catch-all stub in a temp dir
+        const stubStatus = parseInt(options.stub, 10);
+        if (Number.isNaN(stubStatus) || stubStatus < 100 || stubStatus > 599) {
+          console.error('❌ Invalid --stub value: must be an HTTP status code (100-599)');
+          process.exit(1);
+        }
+        dir = createStubServerDir(stubStatus);
+        if (!quiet) console.log(`[info] Stub mode: catch-all → ${stubStatus}`);
+      } else if (target) {
+        dir = target;
+      } else {
+        // No target and no --stub: try default ./wiremock
+        if (existsSync('./wiremock/mappings')) {
+          dir = './wiremock';
+        } else {
+          console.error('❌ No target specified and no stubs found in ./wiremock/');
+          console.error('Usage: stw serve <dir|spec> or stw serve --stub <status>');
+          process.exit(1);
+        }
       }
 
       if (!quiet) console.log(`[info] Starting WireMock from: ${dir}`);
