@@ -25,4 +25,16 @@ export interface WireMockResponse {
 
   /** Reference to external file in __files/ directory (mutually exclusive with jsonBody) */
   bodyFileName?: string;
+
+  /** Fixed delay in milliseconds before returning the response (from x-wiremock-delay type=fixed) */
+  fixedDelayMilliseconds?: number;
+
+  /** Random delay distribution before returning the response (from x-wiremock-delay type=uniform|lognormal) */
+  delayDistribution?: {
+    type: 'uniform' | 'lognormal';
+    lower?: number;
+    upper?: number;
+    median?: number;
+    sigma?: number;
+  };
 }

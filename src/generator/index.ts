@@ -113,15 +113,15 @@ export function generateMappings(records: OperationRecord[], options: GenerateMa
       // x-wiremock-delay
       if (ext.delay) {
         if (ext.delay.type === 'fixed' && ext.delay.milliseconds !== undefined) {
-          mapping.fixedDelayMilliseconds = ext.delay.milliseconds;
+          response.fixedDelayMilliseconds = ext.delay.milliseconds;
         } else if (ext.delay.type === 'uniform') {
-          mapping.delayDistribution = {
+          response.delayDistribution = {
             type: 'uniform',
             lower: ext.delay.lower,
             upper: ext.delay.upper,
           };
         } else if (ext.delay.type === 'lognormal') {
-          mapping.delayDistribution = {
+          response.delayDistribution = {
             type: 'lognormal',
             median: ext.delay.median,
             sigma: ext.delay.sigma,

@@ -28,18 +28,6 @@ export interface WireMockMapping {
   /** Optional metadata (e.g., source OpenAPI operation, conversion metadata) */
   metadata?: Record<string, unknown>;
 
-  /** Fixed delay in milliseconds (from x-wiremock-delay type=fixed) */
-  fixedDelayMilliseconds?: number;
-
-  /** Delay distribution (from x-wiremock-delay type=uniform|lognormal) */
-  delayDistribution?: {
-    type: 'uniform' | 'lognormal';
-    lower?: number;
-    upper?: number;
-    median?: number;
-    sigma?: number;
-  };
-
   /** Scenario name (from x-wiremock-scenario) */
   scenarioName?: string;
 
