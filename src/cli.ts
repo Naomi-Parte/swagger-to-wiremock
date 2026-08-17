@@ -58,6 +58,7 @@ Examples:
 interface ConvertOptions {
   output: string;
   seed?: string;
+  wiremockDir?: string;
   verbose?: boolean;
   quiet?: boolean;
   clean?: boolean; // Commander handles --no-clean as clean=false
@@ -212,6 +213,7 @@ program
       port: undefined,
       jar: undefined,
       templated: undefined,
+      wiremockDir: undefined,
     };
 
     const merged = mergeWithCliOptions(projectConfig, options as unknown as Record<string, unknown>, cliDefaults) as unknown as ConvertOptions;
@@ -242,7 +244,12 @@ program
       if (merged.output === './wiremock') {
         const specBaseName = input.replace(/^.*[\\/]/, '').replace(/\.(yaml|yml|json)$/i, '');
         const sanitized = specBaseName.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-        merged.output = `./${sanitized || 'wiremock'}`;
+        const specDirName = sanitized || 'wiremock';
+
+        // Check wiremock-dir: project config > global config > cwd
+        const wiremockDir = merged.wiremockDir ?? (getConfig('wiremock-dir') as string | undefined);
+
+        merged.output = wiremockDir ? join(wiremockDir, specDirName) : `./${specDirName}`;
       }
 
       log(`[info] Input: ${input}`);
