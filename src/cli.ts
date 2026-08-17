@@ -413,6 +413,15 @@ program
         process.exit(0);
       }
 
+      // Check port conflict before starting (foreground mode)
+      const portCheck = isPortOccupied(port);
+      if (portCheck.occupied && portCheck.entry) {
+        console.error(
+          `❌ Port ${port} is already in use (PID: ${portCheck.entry.pid}, stubs: ${portCheck.entry.rootDir})`,
+        );
+        process.exit(1);
+      }
+
       const server = startServer({
         rootDir: dir,
         port,

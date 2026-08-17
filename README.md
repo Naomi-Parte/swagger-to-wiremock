@@ -92,11 +92,12 @@ Options:
   --no-security          Skip security scheme matchers
   --help-examples        Show usage examples
 
-swagger-to-wiremock serve <dir> [options]
+swagger-to-wiremock serve [target] [options]
 
 Options:
   -p, --port <port>      WireMock port (default: 8080)
   --jar <path>           Path to WireMock standalone JAR
+  --stub <status>        Start a catch-all server returning the given HTTP status code
   --background           Start server in background (detached)
   -v, --verbose          Show detailed logs
   -q, --quiet            Suppress output except errors
@@ -233,9 +234,65 @@ Auth requirements from `securitySchemes` are applied automatically:
 
 Use `--no-security` to generate stubs without auth matchers.
 
+### Custom WireMock Extensions (`x-wiremock-*`)
+
+Add WireMock-specific behaviour directly in your OpenAPI spec using custom extension fields:
+
+```yaml
+paths:
+  /pets:
+    get:
+      x-wiremock-delay:
+        type: fixed
+        milliseconds: 2000
+      x-wiremock-priority: 1
+      x-wiremock-scenario:
+        name: "Pet lifecycle"
+        requiredState: "Started"
+        newState: "Has pets"
+      responses:
+        "200":
+          description: OK
+```
+
+**Supported extensions:**
+
+| Extension | Effect in WireMock |
+|-----------|-------------------|
+| `x-wiremock-delay` | Adds response delay — `fixed` (milliseconds), `uniform` (lower/upper), or `lognormal` (median/sigma) |
+| `x-wiremock-priority` | Overrides the default status-based priority (lower number = higher priority) |
+| `x-wiremock-scenario` | Enables stateful stubs — stub only matches when scenario is in `requiredState`, then transitions to `newState` |
+
+**Generated mapping output:**
+
+```json
+{
+  "priority": 1,
+  "scenarioName": "Pet lifecycle",
+  "requiredScenarioState": "Started",
+  "newScenarioState": "Has pets",
+  "response": {
+    "status": 200,
+    "fixedDelayMilliseconds": 2000,
+    "headers": { "Content-Type": "application/json" },
+    "bodyFileName": "get-pets-200.json"
+  }
+}
+```
+
+Extensions are optional — specs without `x-wiremock-*` fields generate standard stubs as before.
+
 ### Serve Command
 
 Start WireMock directly — no manual JAR management:
+
+```bash
+# Quick catch-all server (no spec needed)
+stw serve --stub 200                    # Returns 200 for any request
+stw serve --stub 503 --port 3000        # Simulate downstream outage
+stw serve --stub 429 --background       # Rate-limit stub, running in background
+```
+
 
 ```bash
 # Set JAR path once
