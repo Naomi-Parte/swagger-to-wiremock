@@ -106,6 +106,10 @@ swagger-to-wiremock status
 
   List running background WireMock servers (port, PID, stubs dir, started time)
 
+swagger-to-wiremock dir
+
+  Print the resolved wiremock output directory (for use with cd)
+
 swagger-to-wiremock stop [port]
 
   Stop a background WireMock server by port, or all servers if no port given
@@ -170,6 +174,14 @@ stw config set wiremock-dir ./wiremock
 ```
 
 When not set, output goes to `./<spec-name>/` in the current directory.
+
+### `stw dir` — Show Output Directory
+
+Prints the resolved `wiremock-dir` path. Useful for checking where stubs will be generated:
+
+```bash
+stw dir                     # prints the absolute wiremock-dir path
+```
 
 **Discovery order** (first match wins):
 1. `.stwrc.yaml` in cwd

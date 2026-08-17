@@ -129,6 +129,18 @@ function formatErrorMessage(error: unknown): string {
 }
 
 /**
+ * Convert a Windows path to POSIX-style for MINGW/Git Bash compatibility.
+ * e.g. "C:\Users\nparte\wiremock" → "/c/Users/nparte/wiremock"
+ * On non-Windows or paths already POSIX, returns as-is.
+ */
+function toPosixPath(p: string): string {
+  if (/^[A-Z]:\\/i.test(p)) {
+    return '/' + p[0]!.toLowerCase() + p.slice(2).replace(/\\/g, '/');
+  }
+  return p.replace(/\\/g, '/');
+}
+
+/**
  * Clean up a temp directory if it was created by stw.
  * Only removes directories in the OS temp folder that match the stw naming pattern.
  * @param dir - Directory path to check and potentially remove
@@ -661,6 +673,26 @@ program
     }
 
     console.log('');
+  });
+
+// ─── dir subcommand ──────────────────────────────────────────────────────────
+
+program
+  .command('dir')
+  .description('Print the resolved wiremock output directory (for use with cd)')
+  .action(() => {
+    // Priority: project config > global config > cwd
+    const { config: projectConfig } = loadProjectConfig();
+    const wiremockDir = projectConfig['wiremock-dir'] ?? (getConfig('wiremock-dir') as string | undefined);
+
+    if (wiremockDir) {
+      const resolved = resolve(wiremockDir);
+      // Output POSIX-style path for MINGW/Git Bash compatibility
+      process.stdout.write(toPosixPath(resolved) + '\n');
+    } else {
+      process.stderr.write('wiremock-dir is not set. Use: stw config set wiremock-dir <path>\n');
+      process.exit(1);
+    }
   });
 
 // ─── stop subcommand ─────────────────────────────────────────────────────────
