@@ -3,7 +3,7 @@
  * @description Writes generated mappings and response bodies to WireMock directory structure
  */
 
-import { mkdir, rm, writeFile } from 'fs/promises';
+import { mkdir, rm, writeFile, access } from 'fs/promises';
 import { join } from 'path';
 import type { WireMockMapping } from '../types/wiremock-mapping.js';
 import type { OperationRecord } from '../types/operation-record.js';
@@ -133,6 +133,31 @@ async function writeItemsToDir(
 }
 
 /**
+ * Safely clean only stw-generated artifacts from the output directory.
+ * Removes only known stw folders: mappings/, __files/, and status-class folders (1xx/-5xx/).
+ * Does NOT delete the output directory itself or any other files within it.
+ *
+ * @param outputDir - Root output directory
+ * @param flat - Whether flat mode is being used
+ */
+async function cleanStwArtifacts(outputDir: string, flat: boolean): Promise<void> {
+  // Folders that stw generates — only these are safe to delete
+  const stwFolders = flat
+    ? ['mappings', '__files']
+    : ['mappings', '__files', '1xx', '2xx', '3xx', '4xx', '5xx'];
+
+  for (const folder of stwFolders) {
+    const target = join(outputDir, folder);
+    try {
+      await access(target);
+      await rm(target, { recursive: true, force: true });
+    } catch {
+      // Folder doesn't exist — skip silently
+    }
+  }
+}
+
+/**
  * Write WireMock mappings and body files to disk.
  *
  * By default, output is split into per-status-class folders (`2xx/`, `4xx/`, `5xx/`, ...)
@@ -156,7 +181,7 @@ export async function writeStubs(
   const flat = options.flat ?? false;
 
   if (clean && !dryRun) {
-    await rm(outputDir, { recursive: true, force: true });
+    await cleanStwArtifacts(outputDir, flat);
   }
 
   const items: WriteItem[] = mappings

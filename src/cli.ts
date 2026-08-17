@@ -7,7 +7,7 @@
 
 import { program } from 'commander';
 import { resolve, join } from 'path';
-import { existsSync } from 'fs';
+import { existsSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
 import { parseOpenAPISpec } from './parser/index.js';
@@ -128,15 +128,35 @@ function formatErrorMessage(error: unknown): string {
 }
 
 /**
+ * Clean up a temp directory if it was created by stw.
+ * Only removes directories in the OS temp folder that match the stw naming pattern.
+ * @param dir - Directory path to check and potentially remove
+ */
+function cleanupTempStubDir(dir: string): void {
+  const osTmp = tmpdir();
+  const normalizedDir = resolve(dir);
+  const normalizedTmp = resolve(osTmp);
+  const baseName = normalizedDir.replace(/^.*[\\/]/, '');
+  if (normalizedDir.startsWith(normalizedTmp) && (baseName.startsWith('stw-stub-') || baseName.startsWith('stw-serve-'))) {
+    try { rmSync(normalizedDir, { recursive: true, force: true }); } catch { /* ignore */ }
+  }
+}
+
+/**
  * Register Ctrl+C handler for graceful server shutdown.
  */
 function registerShutdownHandler(
   stopFn: () => void,
   quiet: boolean,
+  cleanupDir?: string,
 ): void {
   const handler = (): void => {
     if (!quiet) console.log('\n[info] Shutting down WireMock...');
     stopFn();
+    // Clean up temp directory if one was created
+    if (cleanupDir) {
+      cleanupTempStubDir(cleanupDir);
+    }
     // Give it a moment to clean up, then exit
     setTimeout(() => process.exit(0), 1000);
   };
@@ -373,6 +393,7 @@ program
 
       // Determine the root directory to serve
       let dir: string;
+      let isTempDir = false;
 
       if (options.stub) {
         // --stub mode: generate a catch-all stub in a temp dir
@@ -382,6 +403,7 @@ program
           process.exit(1);
         }
         dir = createStubServerDir(stubStatus);
+        isTempDir = true;
         if (!quiet) console.log(`[info] Stub mode: catch-all → ${stubStatus}`);
       } else if (target) {
         // Detect if target is a spec file (.yaml, .yml, .json)
@@ -427,6 +449,7 @@ program
 
           if (!quiet) console.log(`✅ Converted ${mappings.length} stubs → ${outputDir}`);
           dir = outputDir;
+          isTempDir = true;
         } else {
           dir = target;
         }
@@ -492,7 +515,7 @@ program
         verbose,
       });
 
-      registerShutdownHandler(server.stop, quiet);
+      registerShutdownHandler(server.stop, quiet, isTempDir ? dir : undefined);
 
       // Keep the process alive until WireMock exits
       const exitCode = await server.waitForExit();
@@ -641,7 +664,11 @@ program
   .option('-a, --all', 'Stop all running servers')
   .action((port: string | undefined, options: { all?: boolean }) => {
     if (options.all) {
+      // Get server entries before stopping (for temp dir cleanup)
+      const servers = getServerStatus().filter((s) => s.alive);
       const count = stopAllServers();
+      // Clean up any temp dirs
+      for (const server of servers) { cleanupTempStubDir(server.rootDir); }
       if (count === 0) {
         console.log('No running WireMock servers to stop.');
       } else {
@@ -666,6 +693,7 @@ program
     const result = stopServer(portNum);
     if (result.success && result.entry) {
       console.log(`✅ Stopped WireMock on port ${portNum} (PID: ${result.entry.pid})`);
+      cleanupTempStubDir(result.entry.rootDir);
     } else {
       console.error(`❌ No running server found on port ${portNum}.`);
       console.error('   Run "stw status" to see active servers.');

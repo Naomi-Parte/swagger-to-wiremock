@@ -125,16 +125,21 @@ describe('writeStubs', () => {
     await expect(access(join(nested, '__files'))).resolves.toBeUndefined();
   });
 
-  it('clean option removes existing directory first', async () => {
+  it('clean option removes only stw artifacts, preserves other files', async () => {
     const outputDir = createTmpDirPath('clean');
-    await mkdir(outputDir, { recursive: true });
-    const oldFile = join(outputDir, 'old.txt');
-    await writeFile(oldFile, 'stale', 'utf8');
+    const mappingsDir = join(outputDir, 'mappings');
+    await mkdir(mappingsDir, { recursive: true });
+    const userFile = join(outputDir, 'old.txt');
+    const staleMapping = join(mappingsDir, 'stale-mapping.json');
+    await writeFile(userFile, 'precious', 'utf8');
+    await writeFile(staleMapping, '{}', 'utf8');
 
     await writeStubs(sampleMappings(), sampleRecords(), { outputDir, clean: true, flat: true });
 
-    await expect(access(oldFile)).rejects.toThrow();
+    // User file preserved, stale mapping removed (whole mappings/ dir was recreated)
+    await expect(access(userFile)).resolves.toBeUndefined();
     await expect(access(join(outputDir, 'mappings'))).resolves.toBeUndefined();
+    await expect(access(staleMapping)).rejects.toThrow();
   });
 
   it('dry run does not write files', async () => {
