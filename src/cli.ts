@@ -8,6 +8,7 @@
 import { program } from 'commander';
 import { resolve, join } from 'path';
 import { existsSync } from 'fs';
+import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
 import { parseOpenAPISpec } from './parser/index.js';
 import { transformSpec } from './transformer/index.js';
@@ -45,6 +46,8 @@ Examples:
   $ swagger-to-wiremock serve ./wiremock-stubs --port 9090     # Serve on custom port
   $ swagger-to-wiremock serve --stub 200                       # Catch-all 200 server (no spec needed)
   $ swagger-to-wiremock serve --stub 503 --port 3000           # Simulate downstream outage
+  $ swagger-to-wiremock serve ./petstore.yaml                  # Convert spec + serve in one step
+  $ swagger-to-wiremock serve ./api.yaml --status 2xx --port 9090  # Convert (2xx only) + serve
   $ swagger-to-wiremock config set jar /path/to/wiremock.jar   # Set JAR path globally
   $ swagger-to-wiremock config set port 9090                   # Set default port
   $ swagger-to-wiremock config get jar                         # Show configured JAR path
@@ -74,6 +77,10 @@ interface ServeOptions {
   port?: string;
   jar?: string;
   stub?: string;
+  status?: string;
+  flat?: boolean;
+  seed?: string;
+  security?: boolean;
   background?: boolean;
   verbose?: boolean;
   quiet?: boolean;
@@ -340,6 +347,10 @@ program
   .option('-b, --background', 'Start server in background (detach, return immediately)')
   .option('--jar <path>', 'Path to WireMock standalone JAR')
   .option('--stub <status>', 'Start a catch-all server returning the given HTTP status code (e.g. --stub 200)')
+  .option('--status <codes>', 'Filter by status code when serving a spec file (e.g. 2xx, 4xx)')
+  .option('--flat', 'Use flat output when converting a spec file')
+  .option('-s, --seed <seed>', 'Seed for deterministic response generation')
+  .option('--no-security', 'Skip security scheme matchers when converting a spec file')
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Suppress all output except errors')
   .action(async (target: string | undefined, options: ServeOptions) => {
@@ -366,7 +377,52 @@ program
         dir = createStubServerDir(stubStatus);
         if (!quiet) console.log(`[info] Stub mode: catch-all → ${stubStatus}`);
       } else if (target) {
-        dir = target;
+        // Detect if target is a spec file (.yaml, .yml, .json)
+        const lowerTarget = target.toLowerCase();
+        const isSpecFile = lowerTarget.endsWith('.yaml') || lowerTarget.endsWith('.yml') || lowerTarget.endsWith('.json');
+
+        if (isSpecFile) {
+          // Convert the spec to stubs first, then serve
+          if (!quiet) console.log(`[info] Detected spec file: ${target}`);
+          if (!quiet) console.log('[info] Converting spec → stubs...');
+
+          const spec = await parseOpenAPISpec(target, { verbose, quiet });
+          let records = transformSpec(spec);
+
+          // Strip security matchers if --no-security
+          if (options.security === false) {
+            for (const record of records) {
+              delete record.securityMatchers;
+            }
+          }
+
+          // Apply status filter if provided
+          if (options.status) {
+            const filters = parseStatusFilter(options.status);
+            records = filterByStatus(records, filters);
+          }
+
+          const seed = options.seed ? parseInt(options.seed, 10) : 42;
+          const flat = options.flat ?? true; // Default to flat for serve (simpler)
+          const mappings = generateMappings(records, { seed });
+
+          // Write to a temp directory
+          const specName = target.replace(/^.*[\\/]/, '').replace(/\.(yaml|yml|json)$/i, '');
+          const outputDir = join(tmpdir(), `stw-serve-${specName}-${Date.now()}`);
+
+          await writeStubs(mappings, records, {
+            outputDir,
+            clean: true,
+            flat,
+            seed,
+            empty: false,
+          });
+
+          if (!quiet) console.log(`✅ Converted ${mappings.length} stubs → ${outputDir}`);
+          dir = outputDir;
+        } else {
+          dir = target;
+        }
       } else {
         // No target and no --stub: try default ./wiremock
         if (existsSync('./wiremock/mappings')) {

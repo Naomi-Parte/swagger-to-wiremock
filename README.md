@@ -287,6 +287,13 @@ Extensions are optional — specs without `x-wiremock-*` fields generate standar
 Start WireMock directly — no manual JAR management:
 
 ```bash
+# Serve directly from a spec file (convert + serve in one step)
+stw serve ./petstore.yaml                    # Convert then serve
+stw serve ./api.yaml --status 2xx            # Only 2xx responses
+stw serve ./api.yaml --port 9090 --no-security  # Custom port, skip auth
+```
+
+```bash
 # Quick catch-all server (no spec needed)
 stw serve --stub 200                    # Returns 200 for any request
 stw serve --stub 503 --port 3000        # Simulate downstream outage
