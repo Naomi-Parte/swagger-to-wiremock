@@ -25,7 +25,7 @@ import { loadProjectConfig, mergeWithCliOptions } from './config/project-config.
 import { initConfig } from './config/init.js';
 import { createStubServerDir } from './server/stub-server.js';
 
-const version = '0.2.0';
+const version = '0.3.0';
 
 const EXAMPLES = `
 Examples:
