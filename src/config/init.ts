@@ -95,10 +95,11 @@ export function initConfig(options: InitOptions = {}): InitResult {
     );
 
     if (existingFiles.length > 0) {
+      const existing = existingFiles[0]!;
       return {
         created: false,
-        path: join(dir, existingFiles[0]),
-        reason: `Config file already exists: ${existingFiles[0]}. Use --force to overwrite.`,
+        path: join(dir, existing),
+        reason: `Config file already exists: ${existing}. Use --force to overwrite.`,
       };
     }
   }
