@@ -153,7 +153,7 @@ program
 program
   .command('convert <input>')
   .description('Convert an OpenAPI spec to WireMock mappings')
-  .option('-o, --output <dir>', 'Output directory (default: ./wiremock)', './wiremock')
+  .option('-o, --output <dir>', 'Output directory (default: ./<spec-name>)', './wiremock')
   .option('-s, --seed <seed>', 'Seed for deterministic response generation (default: random)')
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Suppress all output except errors')
@@ -216,6 +216,13 @@ program
           console.error('Run with -v for full stack trace');
           process.exit(1);
         }
+      }
+
+      // Derive output directory from spec filename if user didn't explicitly set -o
+      if (merged.output === './wiremock') {
+        const specBaseName = input.replace(/^.*[\\/]/, '').replace(/\.(yaml|yml|json)$/i, '');
+        const sanitized = specBaseName.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        merged.output = `./${sanitized || 'wiremock'}`;
       }
 
       log(`[info] Input: ${input}`);

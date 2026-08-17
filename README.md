@@ -77,7 +77,7 @@ npx swagger-to-wiremock convert ./api.yaml -o ./stubs --flat
 swagger-to-wiremock convert <input> [options]
 
 Options:
-  -o, --output <dir>     Output directory (default: ./wiremock)
+  -o, --output <dir>     Output directory (default: ./<spec-name>)
   -s, --seed <number>    Seed for deterministic output (default: 42)
   -v, --verbose          Show detailed pipeline logs
   -q, --quiet            Suppress all output except errors

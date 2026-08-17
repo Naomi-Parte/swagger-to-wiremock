@@ -1,0 +1,23 @@
+{
+  "id": "9972daab-2c86-459f-9d78-3fe1be4e3280",
+  "name": "GET /pets - 200",
+  "priority": 3,
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/pets"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "bodyFileName": "get-pets-200.json",
+    "fixedDelayMilliseconds": 2000
+  },
+  "metadata": {
+    "operationId": "listPets"
+  },
+  "scenarioName": "Pet lifecycle",
+  "requiredScenarioState": "Started",
+  "newScenarioState": "Has pets"
+}
