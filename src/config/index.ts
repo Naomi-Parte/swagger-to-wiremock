@@ -9,7 +9,7 @@
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
-import { join, isAbsolute } from 'path';
+import { join, resolve } from 'path';
 import { homedir } from 'os';
 
 /** Known configuration keys and their expected types */
@@ -24,6 +24,14 @@ export interface GlobalConfig {
 
 /** All valid config keys */
 const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir'];
+
+/**
+ * Resolve a path to absolute. If already absolute, returns as-is.
+ * If relative, resolves against cwd.
+ */
+export function resolveToAbsolute(p: string): string {
+  return resolve(p);
+}
 
 /**
  * Get the path to the global config directory (~/.swagger-to-wiremock/)
@@ -97,16 +105,22 @@ export function setConfig(key: ConfigKey, value: string): void {
     }
     config.port = numValue;
   } else if (key === 'jar') {
-    if (!isAbsolute(value)) {
-      throw new Error(`Invalid jar path: "${value}". Global config requires an absolute path (e.g. /path/to/wiremock.jar or C:\\path\\to\\wiremock.jar).`);
+    if (!value) {
+      throw new Error('Invalid jar: path cannot be empty.');
     }
-    config.jar = value;
+    if (!value.endsWith('.jar')) {
+      throw new Error(`Invalid jar path: "${value}". Must be a .jar file.`);
+    }
+    const resolvedJar = resolveToAbsolute(value);
+    if (!existsSync(resolvedJar)) {
+      throw new Error(`JAR file not found: "${resolvedJar}". Check the path and try again.`);
+    }
+    config.jar = resolvedJar;
   } else if (key === 'output-dir') {
     if (!value) {
       throw new Error('Invalid output-dir: path cannot be empty.');
     }
-    // Accept both relative and absolute paths — resolve at usage time
-    config['output-dir'] = value;
+    config['output-dir'] = resolveToAbsolute(value);
   } else {
     (config as Record<string, unknown>)[key] = value;
   }
