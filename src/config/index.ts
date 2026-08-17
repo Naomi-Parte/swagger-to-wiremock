@@ -13,17 +13,17 @@ import { join, isAbsolute } from 'path';
 import { homedir } from 'os';
 
 /** Known configuration keys and their expected types */
-export type ConfigKey = 'jar' | 'port' | 'wiremock-dir';
+export type ConfigKey = 'jar' | 'port' | 'output-dir';
 
 /** Configuration object shape */
 export interface GlobalConfig {
   jar?: string;
   port?: number;
-  'wiremock-dir'?: string;
+  'output-dir'?: string;
 }
 
 /** All valid config keys */
-const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'wiremock-dir'];
+const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir'];
 
 /**
  * Get the path to the global config directory (~/.swagger-to-wiremock/)
@@ -101,12 +101,12 @@ export function setConfig(key: ConfigKey, value: string): void {
       throw new Error(`Invalid jar path: "${value}". Global config requires an absolute path (e.g. /path/to/wiremock.jar or C:\\path\\to\\wiremock.jar).`);
     }
     config.jar = value;
-  } else if (key === 'wiremock-dir') {
+  } else if (key === 'output-dir') {
     if (!value) {
-      throw new Error('Invalid wiremock-dir: path cannot be empty.');
+      throw new Error('Invalid output-dir: path cannot be empty.');
     }
     // Accept both relative and absolute paths — resolve at usage time
-    config['wiremock-dir'] = value;
+    config['output-dir'] = value;
   } else {
     (config as Record<string, unknown>)[key] = value;
   }

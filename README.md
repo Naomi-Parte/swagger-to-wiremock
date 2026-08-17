@@ -126,7 +126,7 @@ swagger-to-wiremock config <set|get|unset|list> [key] [value]
   unset <key>            Remove a config value
   list                   Show all config values
 
-  Valid keys: jar, port, wiremock-dir
+  Valid keys: jar, port, output-dir
 ```
 
 > **Tip:** The binary is also available as `stw` — a short alias that works
@@ -153,13 +153,13 @@ no-security: true
 port: 9090
 ```
 
-### `wiremock-dir` — Centralized Output Parent
+### `output-dir` — Centralized Output Parent
 
 Set a parent directory where all generated stubs are placed. Each spec becomes a subfolder:
 
 ```yaml
 # .stwrc.yaml
-wiremock-dir: ./wiremock
+output-dir: ./wiremock
 ```
 
 ```bash
@@ -170,17 +170,17 @@ stw convert petstore.yaml -o ./custom  # → ./custom/ (explicit -o wins)
 
 Also available as a global config:
 ```bash
-stw config set wiremock-dir ./wiremock
+stw config set output-dir ./wiremock
 ```
 
 When not set, output goes to `./<spec-name>/` in the current directory.
 
 ### `stw dir` — Show Output Directory
 
-Prints the resolved `wiremock-dir` path. Useful for checking where stubs will be generated:
+Prints the resolved `output-dir` path. Useful for checking where stubs will be generated:
 
 ```bash
-stw dir                     # prints the absolute wiremock-dir path
+stw dir                     # prints the absolute output-dir path
 ```
 
 **Discovery order** (first match wins):

@@ -30,7 +30,7 @@ export interface ProjectConfig {
   'no-security'?: boolean;
   port?: number;
   jar?: string;
-  'wiremock-dir'?: string;
+  'output-dir'?: string;
   empty?: boolean;
   verbose?: boolean;
   quiet?: boolean;
@@ -198,7 +198,7 @@ export function mergeWithCliOptions(
     serve: 'serve',
     'dry-run': 'dryRun',
     templated: 'templated',
-    'wiremock-dir': 'wiremockDir',
+    'output-dir': 'outputDir',
   };
 
   for (const [configKey, cliKey] of Object.entries(keyMap)) {

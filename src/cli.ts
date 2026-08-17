@@ -58,7 +58,7 @@ Examples:
 interface ConvertOptions {
   output: string;
   seed?: string;
-  wiremockDir?: string;
+  outputDir?: string;
   verbose?: boolean;
   quiet?: boolean;
   clean?: boolean; // Commander handles --no-clean as clean=false
@@ -225,7 +225,7 @@ program
       port: undefined,
       jar: undefined,
       templated: undefined,
-      wiremockDir: undefined,
+      outputDir: undefined,
     };
 
     const merged = mergeWithCliOptions(projectConfig, options as unknown as Record<string, unknown>, cliDefaults) as unknown as ConvertOptions;
@@ -258,10 +258,10 @@ program
         const sanitized = specBaseName.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
         const specDirName = sanitized || 'wiremock';
 
-        // Check wiremock-dir: project config > global config > cwd
-        const wiremockDir = merged.wiremockDir ?? (getConfig('wiremock-dir') as string | undefined);
+        // Check output-dir: project config > global config > cwd
+        const outputDir = merged.outputDir ?? (getConfig('output-dir') as string | undefined);
 
-        merged.output = wiremockDir ? join(wiremockDir, specDirName) : `./${specDirName}`;
+        merged.output = outputDir ? join(outputDir, specDirName) : `./${specDirName}`;
       }
 
       log(`[info] Input: ${input}`);
@@ -683,14 +683,14 @@ program
   .action(() => {
     // Priority: project config > global config > cwd
     const { config: projectConfig } = loadProjectConfig();
-    const wiremockDir = projectConfig['wiremock-dir'] ?? (getConfig('wiremock-dir') as string | undefined);
+    const outputDir = projectConfig['output-dir'] ?? (getConfig('output-dir') as string | undefined);
 
-    if (wiremockDir) {
-      const resolved = resolve(wiremockDir);
+    if (outputDir) {
+      const resolved = resolve(outputDir);
       // Output POSIX-style path for MINGW/Git Bash compatibility
       process.stdout.write(toPosixPath(resolved) + '\n');
     } else {
-      process.stderr.write('wiremock-dir is not set. Use: stw config set wiremock-dir <path>\n');
+      process.stderr.write('output-dir is not set. Use: stw config set output-dir <path>\n');
       process.exit(1);
     }
   });
