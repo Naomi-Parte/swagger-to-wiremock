@@ -1,0 +1,19 @@
+{
+  "id": "42ce8ab0-00d1-421a-a5ab-5d1056b94030",
+  "name": "GET /pets - 200",
+  "priority": 1,
+  "request": {
+    "method": "GET",
+    "urlPathPattern": "/pets"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "bodyFileName": "get-pets-200.json"
+  },
+  "metadata": {
+    "operationId": "listPets"
+  }
+}

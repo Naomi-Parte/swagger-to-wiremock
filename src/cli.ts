@@ -132,6 +132,34 @@ function formatErrorMessage(error: unknown): string {
 }
 
 /**
+ * Resolve a config value using the standard priority chain:
+ *   CLI flag > local project config > global config > default
+ *
+ * @param cliValue - Value from CLI flag (undefined if not passed)
+ * @param projectConfig - Loaded project config object
+ * @param projectKey - Key name in project config (e.g. 'port', 'flat')
+ * @param globalKey - Key name in global config (pass null to skip global lookup)
+ * @param defaultValue - Fallback default
+ * @returns Resolved value
+ */
+function resolveConfig<T>(
+  cliValue: T | undefined,
+  projectConfig: Record<string, unknown>,
+  projectKey: string,
+  globalKey: string | null,
+  defaultValue: T,
+): T {
+  if (cliValue !== undefined) return cliValue;
+  const projectValue = projectConfig[projectKey] as T | undefined;
+  if (projectValue !== undefined) return projectValue;
+  if (globalKey) {
+    const globalValue = getConfig(globalKey as Parameters<typeof getConfig>[0]) as T | undefined;
+    if (globalValue !== undefined) return globalValue;
+  }
+  return defaultValue;
+}
+
+/**
  * Convert a Windows path to POSIX-style for MINGW/Git Bash compatibility.
  * e.g. "C:\Users\nparte\wiremock" → "/c/Users/nparte/wiremock"
  * On non-Windows or paths already POSIX, returns as-is.
@@ -301,8 +329,10 @@ program
         const sanitized = specBaseName.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
         const specDirName = sanitized || 'wiremock';
 
-        // Check output-dir: project config > global config > cwd
-        const outputDir = merged.outputDir ?? (getConfig('output-dir') as string | undefined);
+        // Resolve output-dir: project config > global config > undefined
+        const outputDir = resolveConfig<string | undefined>(
+          merged.outputDir, projectConfig as Record<string, unknown>, 'output-dir', 'output-dir', undefined,
+        );
 
         merged.output = outputDir ? join(outputDir, specDirName) : `./${specDirName}`;
       }
@@ -395,7 +425,10 @@ program
           process.exit(0);
         }
 
-        const port = merged.port ? parseInt(merged.port, 10) : 8080;
+        const port = resolveConfig(
+          merged.port ? parseInt(merged.port, 10) : undefined,
+          projectConfig as Record<string, unknown>, 'port', 'port', 8080,
+        );
         if (Number.isNaN(port) || port < 1 || port > 65535) {
           console.error('❌ Invalid port: must be a number between 1 and 65535');
           process.exit(1);
@@ -448,7 +481,12 @@ program
     const quiet = options.quiet ?? false;
 
     try {
-      const port = options.port ? parseInt(options.port, 10) : 8080;
+      // Resolve port: CLI flag > project config > global config > default (8080)
+      const { config: serveProjectCfg } = loadProjectConfig();
+      const port = resolveConfig(
+        options.port ? parseInt(options.port, 10) : undefined,
+        serveProjectCfg as Record<string, unknown>, 'port', 'port', 8080,
+      );
       if (Number.isNaN(port) || port < 1 || port > 65535) {
         console.error('❌ Invalid port: must be a number between 1 and 65535');
         process.exit(1);
@@ -482,20 +520,25 @@ program
           let records = transformSpec(spec);
 
           // Strip security matchers if --no-security
-          if (options.security === false) {
+          const noSecurity = resolveConfig(
+            options.security === false ? true : undefined,
+            serveProjectCfg as Record<string, unknown>, 'no-security', null, false,
+          );
+          if (noSecurity) {
             for (const record of records) {
               delete record.securityMatchers;
             }
           }
 
           // Apply status filter if provided
-          if (options.status) {
-            const filters = parseStatusFilter(options.status);
+          const cfgStatus = resolveConfig<string | undefined>(options.status, serveProjectCfg as Record<string, unknown>, 'status', null, undefined);
+          if (cfgStatus) {
+            const filters = parseStatusFilter(cfgStatus);
             records = filterByStatus(records, filters);
           }
 
-          const seed = options.seed ? parseInt(options.seed, 10) : 42;
-          const flat = options.flat ?? true; // Default to flat for serve (simpler)
+          const seed = resolveConfig(options.seed ? parseInt(options.seed, 10) : undefined, serveProjectCfg as Record<string, unknown>, 'seed', null, 42);
+          const flat = resolveConfig(options.flat, serveProjectCfg as Record<string, unknown>, 'flat', null, true);
           const mappings = generateMappings(records, { seed });
 
           // Write to a temp directory
@@ -531,11 +574,11 @@ program
       if (!quiet) console.log(`[info] Port: ${port}`);
 
       // Determine foreground vs background: -f wins > -b wins > config > default (background)
-      const { config: serveProjectConfig } = loadProjectConfig();
-      const configForeground = serveProjectConfig.foreground ?? (getConfig('foreground') as boolean | undefined);
       const runForeground = options.foreground ? true
         : options.background ? false
-        : configForeground ?? false;
+        : resolveConfig<boolean>(
+            undefined, serveProjectCfg as Record<string, unknown>, 'foreground', 'foreground', false,
+          );
 
       if (runForeground) {
         // Foreground mode: always verbose, start and block until exit
@@ -552,7 +595,8 @@ program
         const server = startServer({
           rootDir: dir,
           port,
-          jarPath: options.jar,
+          // CLI --jar > project config jar > (resolveJarPath handles global config internally)
+          jarPath: options.jar ?? serveProjectCfg.jar,
           verbose: fgVerbose,
         });
 
@@ -575,7 +619,8 @@ program
         }
 
         // Resolve JAR path
-        const resolvedJar = resolveJarPath({ explicitPath: options.jar, verbose });
+        // CLI --jar > project config jar > (resolveJarPath handles global config + env + auto-detect)
+        const resolvedJar = resolveJarPath({ explicitPath: options.jar ?? serveProjectCfg.jar, verbose });
 
         // Detect Java
         const javaHome = process.env['JAVA_HOME'];
@@ -822,9 +867,10 @@ program
   .command('dir')
   .description('Print the resolved wiremock output directory (for use with cd)')
   .action(() => {
-    // Priority: project config > global config > cwd
     const { config: projectConfig } = loadProjectConfig();
-    const outputDir = projectConfig['output-dir'] ?? (getConfig('output-dir') as string | undefined);
+    const outputDir = resolveConfig<string | undefined>(
+      undefined, projectConfig as Record<string, unknown>, 'output-dir', 'output-dir', undefined,
+    );
 
     if (outputDir) {
       const resolved = resolve(outputDir);
