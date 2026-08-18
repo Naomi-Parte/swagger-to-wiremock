@@ -149,7 +149,7 @@ describe('cli convert', () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('Examples:');
-    expect(result.stdout).toContain('swagger-to-wiremock convert');
+    expect(result.stdout).toContain('convert ./petstore.yaml');
   });
 
   it('invalid seed exits with code 1', () => {

@@ -167,6 +167,6 @@ describe('cli --help includes serve examples', () => {
 
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('--serve');
-    expect(result.stdout).toContain('swagger-to-wiremock serve');
+    expect(result.stdout).toContain('serve ./wiremock-stubs');
   });
 });

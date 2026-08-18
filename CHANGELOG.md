@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.0.0] - 2026-08-19
+
+### Changed
+
+- **Project config discovery** — No longer stops at the git root (`.git/` boundary). Discovery now walks linearly from cwd up to the filesystem root, checking each directory for `.stwrc.yaml`, `.stwrc.yml`, `.stwrc.json`, then falling back to `package.json` key. This supports shared Linux server setups where team configs live in ancestor directories above any git repository.
+- **Dynamic CLI name** — Help text and examples now reflect the actual binary name used to invoke the tool (`stw`, `swagger-to-wiremock`, or custom). Previously hardcoded to `swagger-to-wiremock`.
+
+### Added
+
+- **`--no-seed` flag** — Disable deterministic seeding for `convert` and `serve` commands. Each run produces different fake data using `Math.random()`. Also supported in project config as `no-seed: true`.
+
+
+### Removed
+
+- `findGitRoot()` internal function — replaced by unbounded linear traversal.
+
 ## [0.4.0] - 2026-08-18
 
 ### Added

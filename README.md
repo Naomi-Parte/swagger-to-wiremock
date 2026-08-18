@@ -81,6 +81,7 @@ Options:
   -s, --seed <number>    Seed for deterministic output (default: 42)
   -v, --verbose          Show detailed pipeline logs
   -q, --quiet            Suppress all output except errors
+  --no-seed              Disable seeded generation (random output each run)
   --status <codes>       Filter by status: 2xx, 4xx, 5xx, or specific codes
   --flat                 Single folder output (all statuses, priority-ordered)
   --empty                Generate skeleton stubs with TODO placeholder bodies
@@ -113,6 +114,7 @@ Options:
   --flat                 Use flat output when converting a spec file
   -s, --seed <seed>      Seed for deterministic response generation
   --no-security          Skip security scheme matchers when converting a spec file
+  --no-seed              Disable seeded generation (random output each run)
   -f, --foreground       Keep server in foreground (block until Ctrl+C)
   -b, --background       Start server in background [default]
   -v, --verbose          Show detailed logs
@@ -197,7 +199,8 @@ This creates a `.stwrc.yaml` with all available options commented out and docume
 ```yaml
 # .stwrc.yaml
 output: ./wiremock-stubs
-seed: 42
+seed: 42              # Fixed seed for deterministic output
+# no-seed: true       # Or use this instead for random output each run
 flat: true
 status: 2xx,4xx
 no-security: true
@@ -239,7 +242,7 @@ stw dir                     # prints the absolute output-dir path
 1. `.stwrc.yaml` in cwd
 2. `.stwrc.yml` in cwd
 3. `.stwrc.json` in cwd
-4. Walk up to git root (checking each directory)
+4. Walk up to filesystem root (checking each directory)
 5. `package.json` → `"swagger-to-wiremock"` key
 
 CLI flags always override config file values.
