@@ -6,7 +6,7 @@
  */
 
 import { program } from 'commander';
-import { resolve, join } from 'path';
+import { resolve, join, basename } from 'path';
 import { existsSync, rmSync, readFileSync } from 'fs';
 import { createInterface } from 'readline';
 import { tmpdir, homedir } from 'os';
@@ -30,32 +30,38 @@ import { writeLocalConfig, unsetLocalConfig } from './config/local-writer.js';
 
 const version = '0.4.0';
 
+const binName = (() => {
+  const raw = basename(process.argv[1] || 'stw').replace(/\.(js|ts|mjs|cjs)$/, '');
+  // If invoked via node (e.g. `node dist/cli.js`), fall back to 'stw'
+  return raw === 'cli' ? 'stw' : raw;
+})();
+
 const EXAMPLES = `
 Examples:
-  $ swagger-to-wiremock convert ./petstore.yaml
-  $ swagger-to-wiremock convert ./api.yaml -o ./wiremock-stubs
-  $ swagger-to-wiremock convert ./api.yaml -o ./stubs -s 99 -v
-  $ swagger-to-wiremock convert ./api.yaml --dry-run
-  $ swagger-to-wiremock convert ./api.yaml --no-clean -o ./existing-stubs
-  $ swagger-to-wiremock convert ./api.yaml --status 2xx        # Only success responses
-  $ swagger-to-wiremock convert ./api.yaml --status 4xx,5xx    # Only error responses
-  $ swagger-to-wiremock convert ./api.yaml --status 400,404    # Specific status codes
-  $ swagger-to-wiremock convert ./api.yaml --empty             # Skeleton with TODO bodies
-  $ swagger-to-wiremock convert ./api.yaml --flat              # Single mappings/__files folder (no split)
-  $ swagger-to-wiremock convert ./api.yaml --serve             # Generate + start mock server
-  $ swagger-to-wiremock convert ./api.yaml --no-security       # Skip auth header matchers
-  $ swagger-to-wiremock convert ./api.yaml --serve --port 9090 # Generate + serve on custom port
-  $ swagger-to-wiremock serve ./wiremock-stubs                 # Start server from existing stubs
-  $ swagger-to-wiremock serve ./wiremock-stubs --port 9090     # Serve on custom port
-  $ swagger-to-wiremock serve --stub 200                       # Catch-all 200 server (no spec needed)
-  $ swagger-to-wiremock serve --stub 503 --port 3000           # Simulate downstream outage
-  $ swagger-to-wiremock serve ./petstore.yaml                  # Convert spec + serve in one step
-  $ swagger-to-wiremock serve ./api.yaml --status 2xx --port 9090  # Convert (2xx only) + serve
-  $ swagger-to-wiremock config set jar /path/to/wiremock.jar   # Set JAR path globally
-  $ swagger-to-wiremock config set port 9090                   # Set default port
-  $ swagger-to-wiremock config get jar                         # Show configured JAR path
-  $ swagger-to-wiremock config unset jar                       # Remove JAR config
-  $ swagger-to-wiremock config list                            # Show all config
+  $ ${binName} convert ./petstore.yaml
+  $ ${binName} convert ./api.yaml -o ./wiremock-stubs
+  $ ${binName} convert ./api.yaml -o ./stubs -s 99 -v
+  $ ${binName} convert ./api.yaml --dry-run
+  $ ${binName} convert ./api.yaml --no-clean -o ./existing-stubs
+  $ ${binName} convert ./api.yaml --status 2xx        # Only success responses
+  $ ${binName} convert ./api.yaml --status 4xx,5xx    # Only error responses
+  $ ${binName} convert ./api.yaml --status 400,404    # Specific status codes
+  $ ${binName} convert ./api.yaml --empty             # Skeleton with TODO bodies
+  $ ${binName} convert ./api.yaml --flat              # Single mappings/__files folder (no split)
+  $ ${binName} convert ./api.yaml --serve             # Generate + start mock server
+  $ ${binName} convert ./api.yaml --no-security       # Skip auth header matchers
+  $ ${binName} convert ./api.yaml --serve --port 9090 # Generate + serve on custom port
+  $ ${binName} serve ./wiremock-stubs                 # Start server from existing stubs
+  $ ${binName} serve ./wiremock-stubs --port 9090     # Serve on custom port
+  $ ${binName} serve --stub 200                       # Catch-all 200 server (no spec needed)
+  $ ${binName} serve --stub 503 --port 3000           # Simulate downstream outage
+  $ ${binName} serve ./petstore.yaml                  # Convert spec + serve in one step
+  $ ${binName} serve ./api.yaml --status 2xx --port 9090  # Convert (2xx only) + serve
+  $ ${binName} config set jar /path/to/wiremock.jar   # Set JAR path globally
+  $ ${binName} config set port 9090                   # Set default port
+  $ ${binName} config get jar                         # Show configured JAR path
+  $ ${binName} config unset jar                       # Remove JAR config
+  $ ${binName} config list                            # Show all config
 `;
 
 interface ConvertOptions {
@@ -252,7 +258,7 @@ function registerShutdownHandler(
 }
 
 program
-  .name('swagger-to-wiremock')
+  .name(binName)
   .description('Convert OpenAPI 3.0/3.1 specs to native WireMock JSON stub mappings')
   .version(version);
 
