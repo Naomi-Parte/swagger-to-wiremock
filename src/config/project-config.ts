@@ -23,6 +23,7 @@ import yaml from 'js-yaml';
 export interface ProjectConfig {
   output?: string;
   seed?: number;
+  'no-seed'?: boolean;
   flat?: boolean;
   status?: string;
   'no-security'?: boolean;
@@ -165,6 +166,7 @@ export function mergeWithCliOptions(
   const keyMap: Record<string, string> = {
     output: 'output',
     seed: 'seed',
+    'no-seed': 'seed', // no-seed: true in config → seed: false in CLI
     flat: 'flat',
     status: 'status',
     'no-security': 'security', // inverted boolean
@@ -196,6 +198,9 @@ export function mergeWithCliOptions(
       if (configKey === 'no-security') {
         // `no-security: true` in config → `security: false` in CLI
         merged['security'] = !configValue;
+      } else if (configKey === 'no-seed') {
+        // `no-seed: true` in config → `seed: false` in CLI (disables seeding)
+        if (configValue) merged['seed'] = false;
       } else if (configKey === 'seed' || configKey === 'port') {
         // Store as string to match CLI convention (parsed later)
         merged[cliKey] = String(configValue);

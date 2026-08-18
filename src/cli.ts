@@ -60,7 +60,7 @@ Examples:
 
 interface ConvertOptions {
   output: string;
-  seed?: string;
+  seed?: string | false;
   outputDir?: string;
   verbose?: boolean;
   quiet?: boolean;
@@ -83,7 +83,7 @@ interface ServeOptions {
   stub?: string;
   status?: string;
   flat?: boolean;
-  seed?: string;
+  seed?: string | false;
   security?: boolean;
   foreground?: boolean;
   background?: boolean;
@@ -261,6 +261,7 @@ program
   .description('Convert an OpenAPI spec to WireMock mappings')
   .option('-o, --output <dir>', 'Output directory (default: ./<spec-name>)', './wiremock')
   .option('-s, --seed <seed>', 'Seed for deterministic response generation (default: random)')
+  .option('--no-seed', 'Disable seeded generation (random output each run)')
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Suppress all output except errors')
   .option('--dry-run', 'Show what would be generated without writing files')
@@ -315,9 +316,12 @@ program
         log(`[info] Using config: ${projectConfigSource}`);
       }
 
-      let seed = 42;
-      if (merged.seed !== undefined) {
-        seed = parseInt(merged.seed, 10);
+      let seed: number | undefined = 42;
+      if (merged.seed === false) {
+        // --no-seed flag: disable deterministic generation
+        seed = undefined;
+      } else if (merged.seed !== undefined) {
+        seed = parseInt(merged.seed as string, 10);
         if (Number.isNaN(seed)) {
           console.error('❌ Invalid seed value: must be a number');
           console.error('Run with -v for full stack trace');
@@ -341,7 +345,7 @@ program
 
       log(`[info] Input: ${input}`);
       log(`[info] Output: ${merged.output}`);
-      log(`[info] Seed: ${seed}`);
+      log(`[info] Seed: ${seed ?? 'random (no seed)'}`);
 
       // Step 1: Parse
       log('[info] Parsing spec...');
@@ -475,6 +479,7 @@ program
   .option('--status <codes>', 'Filter by status code when serving a spec file (e.g. 2xx, 4xx)')
   .option('--flat', 'Use flat output when converting a spec file')
   .option('-s, --seed <seed>', 'Seed for deterministic response generation')
+  .option('--no-seed', 'Disable seeded generation (random output each run)')
   .option('--no-security', 'Skip security scheme matchers when converting a spec file')
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Suppress all output except errors')
@@ -540,7 +545,7 @@ program
             records = filterByStatus(records, filters);
           }
 
-          const seed = resolveConfig(options.seed ? parseInt(options.seed, 10) : undefined, serveProjectCfg as Record<string, unknown>, 'seed', null, 42);
+          const seed = options.seed === false ? undefined : resolveConfig(options.seed ? parseInt(options.seed, 10) : undefined, serveProjectCfg as Record<string, unknown>, 'seed', null, 42);
           const flat = resolveConfig(options.flat, serveProjectCfg as Record<string, unknown>, 'flat', null, true);
           const mappings = generateMappings(records, { seed });
 
