@@ -92,6 +92,24 @@ function resolveWireMockRootDirs(rootDir: string, verbose: boolean): string[] {
 }
 
 /**
+ * Check a chunk of output for WireMock startup failure messages.
+ * If found, prints the error line and a hint to use -v.
+ * @param text - Raw output text (from stdout or stderr)
+ * @returns true if a fatal error was detected
+ */
+function detectStartupError(text: string): boolean {
+  const lines = text.split('\n');
+  for (const line of lines) {
+    if (line.includes('Exception') || line.includes('Error:') || line.includes('Failed to bind') || line.includes('Address already in use')) {
+      console.error(`\n❌ WireMock failed to start: ${line.trim()}`);
+      console.error('   Run with -v for full details.');
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Start a WireMock standalone server as a child process.
  *
  * For split-mode output (multiple class dirs), serves the first class directory that exists.
@@ -180,13 +198,8 @@ export function startServer(options: ServerOptions): ServerProcess {
 
   // If not verbose, buffer stderr and check for startup failures
   if (!verbose && child.stderr) {
-    let stderrBuffer = '';
     child.stderr.on('data', (chunk: Buffer) => {
-      stderrBuffer += chunk.toString();
-      // Check for common startup errors
-      if (stderrBuffer.includes('Address already in use')) {
-        console.error(`\n❌ Port ${port} is already in use. Try a different port with --port.`);
-      }
+      detectStartupError(chunk.toString());
     });
   }
 
@@ -194,6 +207,7 @@ export function startServer(options: ServerOptions): ServerProcess {
   if (!verbose && child.stdout) {
     child.stdout.on('data', (chunk: Buffer) => {
       const output = chunk.toString();
+      detectStartupError(output);
       if (output.includes('port:')) {
         console.log(`✅ WireMock running on http://localhost:${port}`);
         console.log(`   Admin: http://localhost:${port}/__admin`);
