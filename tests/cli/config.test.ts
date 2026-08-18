@@ -4,7 +4,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { execFileSync } from 'child_process';
-import { existsSync, mkdirSync, rmSync, readFileSync } from 'fs';
+import { existsSync, mkdirSync, rmSync, readFileSync, realpathSync } from 'fs';
 import { join, resolve } from 'path';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
@@ -14,10 +14,13 @@ const CLI_PATH = resolve(__dirname, '../../dist/cli.js');
 let tmpHome: string;
 
 // Use the real wiremock.jar in the project root — guaranteed to exist and pass validation
-const fakeJar = resolve(__dirname, '../../wiremock.jar');
+// realpathSync resolves Windows 8.3 short paths to their long-form equivalents
+const fakeJar = realpathSync(resolve(__dirname, '../../wiremock.jar'));
 
 beforeEach(() => {
-  tmpHome = join(tmpdir(), `stw-cli-config-${randomBytes(4).toString('hex')}`);
+  // realpathSync normalizes Windows 8.3 short paths (e.g. C:\Users\NPARTI~1\...) to long form
+  const resolvedTmpDir = realpathSync(tmpdir());
+  tmpHome = join(resolvedTmpDir, `stw-cli-config-${randomBytes(4).toString('hex')}`);
   mkdirSync(tmpHome, { recursive: true });
 });
 
@@ -35,8 +38,15 @@ function runCli(args: string[]): RunResult {
   try {
     const stdout = execFileSync('node', [CLI_PATH, ...args], {
       encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'pipe'],
       timeout: 10000,
-      env: { ...process.env, HOME: tmpHome, USERPROFILE: tmpHome },
+      env: {
+        ...process.env,
+        HOME: tmpHome,
+        USERPROFILE: tmpHome,
+        HOMEDRIVE: tmpHome.slice(0, 2),  // e.g. 'C:'
+        HOMEPATH: tmpHome.slice(2),       // e.g. '\Users\...'
+      },
     });
     return { stdout, stderr: '', status: 0 };
   } catch (error) {
@@ -52,6 +62,7 @@ function runCli(args: string[]): RunResult {
 describe('cli config', () => {
   it('config set jar saves the path', () => {
     const result = runCli(['config', 'set', 'jar', fakeJar]);
+    if (result.status !== 0) console.error('config set jar failed:', result.stderr || result.stdout);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('Set jar');
 
