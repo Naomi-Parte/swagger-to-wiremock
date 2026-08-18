@@ -10,6 +10,8 @@ export interface ServerOptions {
   port?: number;
   /** Directory for log files (default: <rootDir>/logs) */
   logDir?: string;
+  /** Disable session logging entirely */
+  noLogs?: boolean;
   /** Explicit path to wiremock JAR file */
   jarPath?: string;
   /** Enable verbose logging */

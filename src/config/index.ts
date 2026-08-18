@@ -13,7 +13,7 @@ import { join, resolve } from 'path';
 import { homedir } from 'os';
 
 /** Known configuration keys and their expected types */
-export type ConfigKey = 'jar' | 'port' | 'output-dir' | 'foreground' | 'log-dir';
+export type ConfigKey = 'jar' | 'port' | 'output-dir' | 'foreground' | 'log-dir' | 'no-logs';
 
 /** Configuration object shape */
 export interface GlobalConfig {
@@ -21,11 +21,12 @@ export interface GlobalConfig {
   port?: number;
   'output-dir'?: string;
   'log-dir'?: string;
+  'no-logs'?: boolean;
   foreground?: boolean;
 }
 
 /** All valid config keys */
-const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir', 'foreground', 'log-dir'];
+const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir', 'foreground', 'log-dir', 'no-logs'];
 
 /**
  * Resolve a path to absolute. If already absolute, returns as-is.
@@ -134,6 +135,12 @@ export function setConfig(key: ConfigKey, value: string): void {
       throw new Error('Invalid foreground value: must be "true" or "false".');
     }
     config.foreground = lower === 'true';
+  } else if (key === 'no-logs') {
+    const lower = value.toLowerCase();
+    if (lower !== 'true' && lower !== 'false') {
+      throw new Error('Invalid no-logs value: must be "true" or "false".');
+    }
+    config['no-logs'] = lower === 'true';
   } else {
     (config as Record<string, unknown>)[key] = value;
   }

@@ -123,7 +123,7 @@ function detectStartupError(text: string): boolean {
  * @returns A ServerProcess handle for stopping the server
  */
 export function startServer(options: ServerOptions): ServerProcess {
-  const { rootDir, port = 8080, jarPath, verbose = false, logDir } = options;
+  const { rootDir, port = 8080, jarPath, verbose = false, logDir, noLogs = false } = options;
 
   // 1. Resolve JAR (fast — file system check only)
   const resolvedJar = resolveJarPath({ explicitPath: jarPath, verbose });
@@ -168,8 +168,8 @@ export function startServer(options: ServerOptions): ServerProcess {
 
   args.push('--verbose', String(verbose));
 
-  // 6. Initialize session logger
-  const logger = new SessionLogger({
+  // 6. Initialize session logger (unless disabled)
+  const logger = noLogs ? null : new SessionLogger({
     port,
     rootDir,
     logDir,
@@ -178,7 +178,7 @@ export function startServer(options: ServerOptions): ServerProcess {
 
   if (verbose) {
     console.log(`[server] Starting: ${javaCmd} ${args.join(' ')}`);
-    console.log(`[server] Logging to: ${logger.logFilePath}`);
+    if (logger) console.log(`[server] Logging to: ${logger.logFilePath}`);
   }
 
   // 7. Spawn the process — always pipe so we can log
@@ -209,14 +209,14 @@ export function startServer(options: ServerOptions): ServerProcess {
 
   // Update logger with PID now that process is spawned
   if (child.pid) {
-    logger.write(`Process started with PID: ${child.pid}`);
+    logger?.write(`Process started with PID: ${child.pid}`);
   }
 
   // Pipe stderr through logger (and check for startup failures)
   if (child.stderr) {
     child.stderr.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
-      logger.write(text);
+      logger?.write(text);
       if (verbose) process.stderr.write(text);
       detectStartupError(text);
     });
@@ -226,13 +226,13 @@ export function startServer(options: ServerOptions): ServerProcess {
   if (child.stdout) {
     child.stdout.on('data', (chunk: Buffer) => {
       const text = chunk.toString();
-      logger.write(text);
+      logger?.write(text);
       if (verbose) process.stdout.write(text);
       detectStartupError(text);
       if (!verbose && text.includes('port:')) {
         console.log(`✅ WireMock running on http://localhost:${port}`);
         console.log(`   Admin: http://localhost:${port}/__admin`);
-        console.log(`   Log:   ${logger.logFilePath}`);
+        if (logger) console.log(`   Log:   ${logger.logFilePath}`);
         console.log('   Press Ctrl+C to stop');
       }
     });
@@ -242,8 +242,8 @@ export function startServer(options: ServerOptions): ServerProcess {
     port,
     stop: () => {
       if (!exited) {
-        logger.write('Stopping server (SIGTERM)...');
-        logger.close();
+        logger?.write('Stopping server (SIGTERM)...');
+        logger?.close();
         child.kill('SIGTERM');
         // Force kill after 5s if still running
         setTimeout(() => {

@@ -33,6 +33,7 @@ export interface ProjectConfig {
   'output-dir'?: string;
   foreground?: boolean;
   'log-dir'?: string;
+  'no-logs'?: boolean;
   empty?: boolean;
   verbose?: boolean;
   quiet?: boolean;
@@ -202,6 +203,7 @@ export function mergeWithCliOptions(
     templated: 'templated',
     'output-dir': 'outputDir',
     'log-dir': 'logDir',
+    'no-logs': 'noLogs',
     foreground: 'foreground',
   };
 

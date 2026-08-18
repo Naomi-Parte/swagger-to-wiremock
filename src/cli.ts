@@ -89,6 +89,7 @@ interface ServeOptions {
   background?: boolean;
   verbose?: boolean;
   quiet?: boolean;
+  logs?: boolean;
 }
 
 /**
@@ -477,6 +478,7 @@ program
   .option('--no-security', 'Skip security scheme matchers when converting a spec file')
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Suppress all output except errors')
+  .option('--no-logs', 'Disable session logging for this serve')
   .action(async (target: string | undefined, options: ServeOptions) => {
     const verbose = options.quiet ? false : (options.verbose ?? false);
     const quiet = options.quiet ?? false;
@@ -579,6 +581,12 @@ program
         undefined, serveProjectCfg as Record<string, unknown>, 'log-dir', 'log-dir', undefined,
       );
 
+      // Resolve no-logs: CLI --no-logs > config > default (false = logging enabled)
+      const noLogs = resolveConfig<boolean>(
+        options.logs === false ? true : undefined,
+        serveProjectCfg as Record<string, unknown>, 'no-logs', 'no-logs', false,
+      );
+
       // Determine foreground vs background: -f wins > -b wins > config > default (background)
       const runForeground = options.foreground ? true
         : options.background ? false
@@ -605,6 +613,7 @@ program
           jarPath: options.jar ?? serveProjectCfg.jar,
           verbose: fgVerbose,
           logDir,
+          noLogs,
         });
 
         registerShutdownHandler(server.stop, quiet, isTempDir ? dir : undefined);
@@ -642,17 +651,21 @@ program
 
         const args = ['-jar', resolvedJar, '--port', String(port), '--root-dir', resolve(dir), '--verbose', 'true'];
 
-        // Setup log file for background process
-        const { logFilePath } = openLogFileForBackground({
-          port,
-          rootDir: resolve(dir),
-          logDir,
-        });
+        // Setup log file for background process (unless logging disabled)
+        let logFilePath: string | undefined;
+        if (!noLogs) {
+          const logResult = openLogFileForBackground({
+            port,
+            rootDir: resolve(dir),
+            logDir,
+          });
+          logFilePath = logResult.logFilePath;
+        }
 
         const pid = spawnBackground(javaCmd, args, { port, rootDir: resolve(dir), logFile: logFilePath });
 
         console.log(`✅ WireMock started on port ${port} (PID: ${pid})`);
-        if (!quiet) console.log(`   Log: ${logFilePath}`);
+        if (!quiet && logFilePath) console.log(`   Log: ${logFilePath}`);
         process.exit(0);
       }
 
@@ -681,6 +694,7 @@ Global config keys (stored in ~/.swagger-to-wiremock/config.json):
   output-dir <path>       Parent directory for all generated stubs
   foreground <true|false> Run WireMock in foreground by default
   log-dir <path>          Directory for serve session log files
+  no-logs <true|false>    Disable session logging entirely
 `;
 
 const CONFIG_HELP_LOCAL = `
@@ -699,7 +713,8 @@ Local config keys (stored in .stwrc.yaml in project root):
   foreground <true|false> Run WireMock in foreground by default
   verbose <true|false>    Enable verbose logging
   quiet <true|false>      Suppress all output except errors
-  log-dir <path>          Directory for serve session log files (default: <output-dir>/logs)
+  log-dir <path>          Directory for serve session log files (default: ~/.swagger-to-wiremock/logs/)
+  no-logs <true|false>    Disable session logging entirely
   templated <true|false>  Use WireMock response templating
   dry-run <true|false>    Show what would be generated without writing
 `;

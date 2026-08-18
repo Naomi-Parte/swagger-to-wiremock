@@ -66,6 +66,9 @@ const TEMPLATE = `# swagger-to-wiremock project configuration
 # Directory for serve session log files (default: <output-dir>/logs)
 # log-dir: ./logs
 
+# Disable session logging entirely
+# no-logs: false
+
 # Suppress all output except errors
 # quiet: false
 
