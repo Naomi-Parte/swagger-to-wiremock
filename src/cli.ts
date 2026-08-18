@@ -876,6 +876,7 @@ program
       console.log(`  ${port} ${pid} ${started.padEnd(18)} ${stubs}${status}`);
       if (entry.logFile) {
         console.log(`         Log: ${entry.logFile}`);
+        console.log('');
       }
     }
 
@@ -1034,8 +1035,8 @@ program
     // List log files
     console.log(`Log directory: ${logDirPath}`);
     console.log('');
-    console.log('  FILE                                SIZE       DATE');
-    console.log('  ────                                ────       ────');
+    console.log('  FILE                                  SIZE       DATE');
+    console.log('  ────                                  ────       ────');
     for (const file of logFiles) {
       const size = file.size > 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${file.size} B`;
       const date = file.mtime.toISOString().replace('T', ' ').replace(/:\d{2}\.\d+Z$/, '');
