@@ -13,17 +13,18 @@ import { join, resolve } from 'path';
 import { homedir } from 'os';
 
 /** Known configuration keys and their expected types */
-export type ConfigKey = 'jar' | 'port' | 'output-dir';
+export type ConfigKey = 'jar' | 'port' | 'output-dir' | 'foreground';
 
 /** Configuration object shape */
 export interface GlobalConfig {
   jar?: string;
   port?: number;
   'output-dir'?: string;
+  foreground?: boolean;
 }
 
 /** All valid config keys */
-const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir'];
+const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir', 'foreground'];
 
 /**
  * Resolve a path to absolute. If already absolute, returns as-is.
@@ -121,6 +122,12 @@ export function setConfig(key: ConfigKey, value: string): void {
       throw new Error('Invalid output-dir: path cannot be empty.');
     }
     config['output-dir'] = resolveToAbsolute(value);
+  } else if (key === 'foreground') {
+    const lower = value.toLowerCase();
+    if (lower !== 'true' && lower !== 'false') {
+      throw new Error('Invalid foreground value: must be "true" or "false".');
+    }
+    config.foreground = lower === 'true';
   } else {
     (config as Record<string, unknown>)[key] = value;
   }
@@ -134,7 +141,7 @@ export function setConfig(key: ConfigKey, value: string): void {
  * @param key - Configuration key
  * @returns The value, or undefined if not set
  */
-export function getConfig(key: ConfigKey): string | number | undefined {
+export function getConfig(key: ConfigKey): string | number | boolean | undefined {
   const config = readConfig();
   return config[key];
 }

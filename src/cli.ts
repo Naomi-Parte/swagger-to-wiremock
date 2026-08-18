@@ -84,6 +84,7 @@ interface ServeOptions {
   seed?: string;
   security?: boolean;
   foreground?: boolean;
+  background?: boolean;
   verbose?: boolean;
   quiet?: boolean;
 }
@@ -432,6 +433,7 @@ program
   .description('Start WireMock server from stubs directory, spec file, or catch-all stub (--stub)')
   .option('-p, --port <port>', 'Port for WireMock server (default: 8080)')
   .option('-f, --foreground', 'Keep server in foreground (block until Ctrl+C)')
+  .option('-b, --background', 'Start server in background [default]')
   .option('--jar <path>', 'Path to WireMock standalone JAR')
   .option('--stub <status>', 'Start a catch-all server returning the given HTTP status code (e.g. --stub 200)')
   .option('--status <codes>', 'Filter by status code when serving a spec file (e.g. 2xx, 4xx)')
@@ -527,8 +529,16 @@ program
       if (!quiet) console.log(`[info] Starting WireMock from: ${dir}`);
       if (!quiet) console.log(`[info] Port: ${port}`);
 
-      // Foreground mode: start and block until exit
-      if (options.foreground) {
+      // Determine foreground vs background: -f wins > -b wins > config > default (background)
+      const { config: serveProjectConfig } = loadProjectConfig();
+      const configForeground = serveProjectConfig.foreground ?? (getConfig('foreground') as boolean | undefined);
+      const runForeground = options.foreground ? true
+        : options.background ? false
+        : configForeground ?? false;
+
+      if (runForeground) {
+        // Foreground mode: always verbose, start and block until exit
+        const fgVerbose = true;
         // Check port conflict
         const portCheck = isPortOccupied(port);
         if (portCheck.occupied && portCheck.entry) {
@@ -542,7 +552,7 @@ program
           rootDir: dir,
           port,
           jarPath: options.jar,
-          verbose,
+          verbose: fgVerbose,
         });
 
         registerShutdownHandler(server.stop, quiet, isTempDir ? dir : undefined);

@@ -52,6 +52,9 @@ const TEMPLATE = `# swagger-to-wiremock project configuration
 # Port for WireMock server
 # port: 8080
 
+# Run WireMock in foreground by default (block until Ctrl+C)
+# foreground: false
+
 # Path to WireMock standalone JAR (absolute or relative to project root)
 # jar: /path/to/wiremock-standalone.jar
 

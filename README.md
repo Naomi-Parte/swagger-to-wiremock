@@ -99,6 +99,7 @@ Options:
   --jar <path>           Path to WireMock standalone JAR
   --stub <status>        Start a catch-all server returning the given HTTP status code
   -f, --foreground       Keep server in foreground (block until Ctrl+C)
+  -b, --background       Start server in background [default]
   -v, --verbose          Show detailed logs
   -q, --quiet            Suppress output except errors
 
@@ -126,7 +127,7 @@ swagger-to-wiremock config <set|get|unset|list> [key] [value]
   unset <key>            Remove a config value
   list                   Show all config values
 
-  Valid keys: jar, port, output-dir
+  Valid keys: jar, port, output-dir, foreground
 ```
 
 > **Tip:** The binary is also available as `stw` — a short alias that works

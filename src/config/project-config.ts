@@ -31,6 +31,7 @@ export interface ProjectConfig {
   port?: number;
   jar?: string;
   'output-dir'?: string;
+  foreground?: boolean;
   empty?: boolean;
   verbose?: boolean;
   quiet?: boolean;
@@ -199,6 +200,7 @@ export function mergeWithCliOptions(
     'dry-run': 'dryRun',
     templated: 'templated',
     'output-dir': 'outputDir',
+    foreground: 'foreground',
   };
 
   for (const [configKey, cliKey] of Object.entries(keyMap)) {
