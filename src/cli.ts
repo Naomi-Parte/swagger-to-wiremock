@@ -25,6 +25,7 @@ import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys
 import { loadProjectConfig, mergeWithCliOptions } from './config/project-config.js';
 import { initConfig } from './config/init.js';
 import { createStubServerDir } from './server/stub-server.js';
+import { writeLocalConfig, unsetLocalConfig } from './config/local-writer.js';
 
 const version = '0.3.0';
 
@@ -607,74 +608,161 @@ program
 
 // ─── config subcommand ───────────────────────────────────────────────────────
 
+const CONFIG_HELP_GLOBAL = `
+Usage:
+  stw config set <key> <value>       Set global config
+  stw config set -l <key> <value>    Set local project config (.stwrc.yaml)
+
+Global config keys (stored in ~/.swagger-to-wiremock/config.json):
+
+  jar <path>              Path to WireMock standalone JAR (e.g. ./wiremock.jar)
+  port <number>           Default WireMock port (e.g. 8080)
+  output-dir <path>       Parent directory for all generated stubs
+  foreground <true|false> Run WireMock in foreground by default
+`;
+
+const CONFIG_HELP_LOCAL = `
+Local config keys (stored in .stwrc.yaml in project root):
+
+  output <path>           Output directory for this project
+  output-dir <path>       Parent directory for generated stubs
+  seed <number>           Seed for deterministic response generation
+  flat <true|false>       Single folder output (no status-class split)
+  status <codes>          Filter stubs by status (e.g. 2xx, 4xx,5xx, 200,404)
+  no-security <true|false>  Skip security scheme matchers
+  empty <true|false>      Generate skeleton stubs with placeholder bodies
+  serve <true|false>      Auto-start WireMock after convert
+  port <number>           WireMock port
+  jar <path>              Path to WireMock standalone JAR
+  foreground <true|false> Run WireMock in foreground by default
+  verbose <true|false>    Enable verbose logging
+  quiet <true|false>      Suppress all output except errors
+  templated <true|false>  Use WireMock response templating
+  dry-run <true|false>    Show what would be generated without writing
+`;
+
 const configCmd = program
   .command('config')
-  .description('Manage global configuration (~/.swagger-to-wiremock/config.json)');
+  .description('Manage global and local project configuration')
+  .addHelpText('after', CONFIG_HELP_GLOBAL + CONFIG_HELP_LOCAL);
 
 configCmd
   .command('set <key> <value>')
-  .description('Set a global config value (valid keys: jar, port)')
-  .action((key: string, value: string) => {
-    if (!isValidKey(key)) {
-      console.error(`❌ Unknown config key: "${key}". Valid keys: ${getValidKeys().join(', ')}`);
-      process.exit(1);
-    }
+  .description('Set a config value')
+  .option('-l, --local', 'Save to local project config (.stwrc.yaml) instead of global')
+  .action((key: string, value: string, options: { local?: boolean }) => {
+    if (options.local) {
+      // Write to .stwrc.yaml in cwd
+      try {
+        writeLocalConfig(key, value);
+        console.log(`✅ Set ${key} = ${value} (local: .stwrc.yaml)`);
+      } catch (error) {
+        console.error(`❌ ${error instanceof Error ? error.message : String(error)}`);
+        process.exit(1);
+      }
+    } else {
+      if (!isValidKey(key)) {
+        console.error(`❌ Unknown global config key: "${key}".`);
+        console.error(`   Valid keys: ${getValidKeys().join(', ')}`);
+        console.error('   Use -l for local project config (supports more keys).');
+        process.exit(1);
+      }
 
-    try {
-      setConfig(key, value);
-      console.log(`✅ Set ${key} = ${value}`);
-    } catch (error) {
-      console.error(`❌ ${error instanceof Error ? error.message : String(error)}`);
-      process.exit(1);
+      try {
+        setConfig(key, value);
+        const resolved = getConfig(key);
+        console.log(`✅ Set ${key} = ${resolved}`);
+      } catch (error) {
+        console.error(`❌ ${error instanceof Error ? error.message : String(error)}`);
+        process.exit(1);
+      }
     }
   });
 
 configCmd
   .command('get <key>')
-  .description('Get a global config value')
-  .action((key: string) => {
-    if (!isValidKey(key)) {
-      console.error(`❌ Unknown config key: "${key}". Valid keys: ${getValidKeys().join(', ')}`);
-      process.exit(1);
-    }
-
-    const value = getConfig(key);
-    if (value === undefined) {
-      console.log(`${key}: (not set)`);
+  .description('Get a config value')
+  .option('-l, --local', 'Read from local project config (.stwrc.yaml)')
+  .action((key: string, options: { local?: boolean }) => {
+    if (options.local) {
+      const { config: projectConfig, source } = loadProjectConfig();
+      const val = (projectConfig as Record<string, unknown>)[key];
+      if (val === undefined) {
+        console.log(`${key}: (not set)${source ? ` [${source}]` : ''}`);
+      } else {
+        console.log(`${key}: ${val}${source ? ` [${source}]` : ''}`);
+      }
     } else {
-      console.log(`${key}: ${value}`);
+      if (!isValidKey(key)) {
+        console.error(`❌ Unknown global config key: "${key}".`);
+        console.error(`   Valid keys: ${getValidKeys().join(', ')}`);
+        process.exit(1);
+      }
+
+      const value = getConfig(key);
+      if (value === undefined) {
+        console.log(`${key}: (not set)`);
+      } else {
+        console.log(`${key}: ${value}`);
+      }
     }
   });
 
 configCmd
   .command('unset <key>')
-  .description('Remove a global config value')
-  .action((key: string) => {
-    if (!isValidKey(key)) {
-      console.error(`❌ Unknown config key: "${key}". Valid keys: ${getValidKeys().join(', ')}`);
-      process.exit(1);
+  .description('Remove a config value')
+  .option('-l, --local', 'Remove from local project config (.stwrc.yaml)')
+  .action((key: string, options: { local?: boolean }) => {
+    if (options.local) {
+      try {
+        unsetLocalConfig(key);
+        console.log(`✅ Removed ${key} from .stwrc.yaml`);
+      } catch (error) {
+        console.error(`❌ ${error instanceof Error ? error.message : String(error)}`);
+        process.exit(1);
+      }
+    } else {
+      if (!isValidKey(key)) {
+        console.error(`❌ Unknown global config key: "${key}".`);
+        console.error(`   Valid keys: ${getValidKeys().join(', ')}`);
+        process.exit(1);
+      }
+      unsetConfig(key);
+      console.log(`✅ Removed ${key}`);
     }
-
-    unsetConfig(key);
-    console.log(`✅ Removed ${key}`);
   });
 
 configCmd
   .command('list')
-  .description('Show all global config values')
-  .action(() => {
-    const config = listConfig();
-    const entries = Object.entries(config);
+  .description('Show all config values')
+  .option('-l, --local', 'Show local project config (.stwrc.yaml)')
+  .action((options: { local?: boolean }) => {
+    if (options.local) {
+      const { config: projectConfig, source } = loadProjectConfig();
+      const entries = Object.entries(projectConfig);
+      if (entries.length === 0) {
+        console.log('No local project config found.');
+        console.log('Run "stw init" to create a .stwrc.yaml, or use "stw config set -l <key> <value>".');
+        return;
+      }
+      console.log(`Local config${source ? ` (${source})` : ''}:`);
+      for (const [key, value] of entries) {
+        console.log(`  ${key}: ${value}`);
+      }
+    } else {
+      const config = listConfig();
+      const entries = Object.entries(config);
 
-    if (entries.length === 0) {
-      console.log('No global config set.');
-      console.log(`Config file: ~/.swagger-to-wiremock/config.json`);
-      return;
-    }
+      if (entries.length === 0) {
+        console.log('No global config set.');
+        console.log('Config file: ~/.swagger-to-wiremock/config.json');
+        return;
+      }
 
-    console.log('Global config:');
-    for (const [key, value] of entries) {
-      console.log(`  ${key}: ${value}`);
+      console.log('Global config:');
+      for (const [key, value] of entries) {
+        console.log(`  ${key}: ${value}`);
+      }
     }
   });
 
