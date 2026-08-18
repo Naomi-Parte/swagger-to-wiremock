@@ -63,6 +63,9 @@ const TEMPLATE = `# swagger-to-wiremock project configuration
 # Enable verbose logging
 # verbose: false
 
+# Directory for serve session log files (default: <output-dir>/logs)
+# log-dir: ./logs
+
 # Suppress all output except errors
 # quiet: false
 

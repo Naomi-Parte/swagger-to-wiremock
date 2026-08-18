@@ -7,7 +7,7 @@
  */
 
 import { spawn, execSync } from 'child_process';
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync, openSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 import type { ServerRegistryEntry } from './types.js';
@@ -211,14 +211,32 @@ export function stopAllServers(): number {
  * @param meta - Metadata to store in the registry (port, rootDir)
  * @returns The PID of the spawned process
  */
+/**
+ * Spawn a background WireMock process with output redirected to a log file.
+ *
+ * @param javaCmd - Path to java executable
+ * @param args - JVM + WireMock arguments
+ * @param meta - Metadata for registry (port, rootDir, logFile)
+ * @returns The spawned process PID
+ */
 export function spawnBackground(
   javaCmd: string,
   args: string[],
-  meta: { port: number; rootDir: string },
+  meta: { port: number; rootDir: string; logFile?: string },
 ): number {
+  let stdio: ('ignore' | number)[];
+
+  if (meta.logFile) {
+    // Open log file for append and redirect stdout + stderr to it
+    const logFd = openSync(meta.logFile, 'a');
+    stdio = ['ignore', logFd, logFd];
+  } else {
+    stdio = ['ignore', 'ignore', 'ignore'];
+  }
+
   const child = spawn(javaCmd, args, {
     detached: true,
-    stdio: 'ignore',
+    stdio,
   });
 
   // Unref so the parent can exit without waiting for the child
@@ -235,6 +253,7 @@ export function spawnBackground(
     pid,
     rootDir: meta.rootDir,
     startedAt: new Date().toISOString(),
+    ...(meta.logFile ? { logFile: meta.logFile } : {}),
   });
 
   return pid;

@@ -32,6 +32,7 @@ export interface ProjectConfig {
   jar?: string;
   'output-dir'?: string;
   foreground?: boolean;
+  'log-dir'?: string;
   empty?: boolean;
   verbose?: boolean;
   quiet?: boolean;
@@ -200,6 +201,7 @@ export function mergeWithCliOptions(
     'dry-run': 'dryRun',
     templated: 'templated',
     'output-dir': 'outputDir',
+    'log-dir': 'logDir',
     foreground: 'foreground',
   };
 

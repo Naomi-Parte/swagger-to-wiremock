@@ -13,18 +13,19 @@ import { join, resolve } from 'path';
 import { homedir } from 'os';
 
 /** Known configuration keys and their expected types */
-export type ConfigKey = 'jar' | 'port' | 'output-dir' | 'foreground';
+export type ConfigKey = 'jar' | 'port' | 'output-dir' | 'foreground' | 'log-dir';
 
 /** Configuration object shape */
 export interface GlobalConfig {
   jar?: string;
   port?: number;
   'output-dir'?: string;
+  'log-dir'?: string;
   foreground?: boolean;
 }
 
 /** All valid config keys */
-const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir', 'foreground'];
+const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir', 'foreground', 'log-dir'];
 
 /**
  * Resolve a path to absolute. If already absolute, returns as-is.
@@ -122,6 +123,11 @@ export function setConfig(key: ConfigKey, value: string): void {
       throw new Error('Invalid output-dir: path cannot be empty.');
     }
     config['output-dir'] = resolveToAbsolute(value);
+  } else if (key === 'log-dir') {
+    if (!value) {
+      throw new Error('Invalid log-dir: path cannot be empty.');
+    }
+    config['log-dir'] = resolveToAbsolute(value);
   } else if (key === 'foreground') {
     const lower = value.toLowerCase();
     if (lower !== 'true' && lower !== 'false') {

@@ -9,11 +9,13 @@ import { accessSync, constants, existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { ServerError } from '../errors/server-error.js';
 import { resolveJarPath } from './jar-resolver.js';
+import { SessionLogger } from './logger.js';
 import type { ServerOptions, ServerProcess } from './types.js';
 
 export type { ServerOptions, ServerProcess } from './types.js';
 export { resolveJarPath } from './jar-resolver.js';
 export { spawnBackground, getServerStatus, stopServer, stopAllServers, isPortOccupied } from './process-manager.js';
+export { SessionLogger, listLogFiles, resolveLogDir, openLogFileForBackground } from './logger.js';
 
 /**
  * Detect if Java is available on the system.
@@ -121,7 +123,7 @@ function detectStartupError(text: string): boolean {
  * @returns A ServerProcess handle for stopping the server
  */
 export function startServer(options: ServerOptions): ServerProcess {
-  const { rootDir, port = 8080, jarPath, verbose = false } = options;
+  const { rootDir, port = 8080, jarPath, verbose = false, logDir } = options;
 
   // 1. Resolve JAR (fast — file system check only)
   const resolvedJar = resolveJarPath({ explicitPath: jarPath, verbose });
@@ -166,13 +168,22 @@ export function startServer(options: ServerOptions): ServerProcess {
 
   args.push('--verbose', String(verbose));
 
+  // 6. Initialize session logger
+  const logger = new SessionLogger({
+    port,
+    rootDir,
+    logDir,
+    jarPath: resolvedJar,
+  });
+
   if (verbose) {
     console.log(`[server] Starting: ${javaCmd} ${args.join(' ')}`);
+    console.log(`[server] Logging to: ${logger.logFilePath}`);
   }
 
-  // 5. Spawn the process
+  // 7. Spawn the process — always pipe so we can log
   const child = spawn(javaCmd, args, {
-    stdio: verbose ? 'inherit' : ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', 'pipe', 'pipe'],
     detached: false,
   });
 
@@ -196,21 +207,32 @@ export function startServer(options: ServerOptions): ServerProcess {
     });
   });
 
-  // If not verbose, buffer stderr and check for startup failures
-  if (!verbose && child.stderr) {
+  // Update logger with PID now that process is spawned
+  if (child.pid) {
+    logger.write(`Process started with PID: ${child.pid}`);
+  }
+
+  // Pipe stderr through logger (and check for startup failures)
+  if (child.stderr) {
     child.stderr.on('data', (chunk: Buffer) => {
-      detectStartupError(chunk.toString());
+      const text = chunk.toString();
+      logger.write(text);
+      if (verbose) process.stderr.write(text);
+      detectStartupError(text);
     });
   }
 
-  // If not verbose, watch stdout for the "started" message
-  if (!verbose && child.stdout) {
+  // Pipe stdout through logger (and detect startup / show user messages)
+  if (child.stdout) {
     child.stdout.on('data', (chunk: Buffer) => {
-      const output = chunk.toString();
-      detectStartupError(output);
-      if (output.includes('port:')) {
+      const text = chunk.toString();
+      logger.write(text);
+      if (verbose) process.stdout.write(text);
+      detectStartupError(text);
+      if (!verbose && text.includes('port:')) {
         console.log(`✅ WireMock running on http://localhost:${port}`);
         console.log(`   Admin: http://localhost:${port}/__admin`);
+        console.log(`   Log:   ${logger.logFilePath}`);
         console.log('   Press Ctrl+C to stop');
       }
     });
@@ -220,6 +242,8 @@ export function startServer(options: ServerOptions): ServerProcess {
     port,
     stop: () => {
       if (!exited) {
+        logger.write('Stopping server (SIGTERM)...');
+        logger.close();
         child.kill('SIGTERM');
         // Force kill after 5s if still running
         setTimeout(() => {

@@ -8,6 +8,8 @@ export interface ServerOptions {
   rootDir: string;
   /** Port to run WireMock on (default: 8080) */
   port?: number;
+  /** Directory for log files (default: <rootDir>/logs) */
+  logDir?: string;
   /** Explicit path to wiremock JAR file */
   jarPath?: string;
   /** Enable verbose logging */
@@ -42,4 +44,6 @@ export interface ServerRegistryEntry {
   rootDir: string;
   /** ISO timestamp when the server was started */
   startedAt: string;
+  /** Path to the log file for this session */
+  logFile?: string;
 }

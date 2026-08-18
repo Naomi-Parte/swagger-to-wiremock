@@ -7,7 +7,7 @@
 
 import { program } from 'commander';
 import { resolve, join } from 'path';
-import { existsSync, rmSync } from 'fs';
+import { existsSync, rmSync, readFileSync } from 'fs';
 import { createInterface } from 'readline';
 import { tmpdir, homedir } from 'os';
 import { execFileSync } from 'child_process';
@@ -20,6 +20,7 @@ import { ServerError } from './errors/server-error.js';
 import { parseStatusFilter, filterByStatus } from './filters/status-filter.js';
 import { synthesisePlaceholderRecords, extractSpecificCodes } from './filters/placeholder-generator.js';
 import { startServer, resolveJarPath } from './server/index.js';
+import { openLogFileForBackground, listLogFiles } from './server/logger.js';
 import { isPortOccupied, spawnBackground, getServerStatus, stopServer, stopAllServers } from './server/process-manager.js';
 import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
 import { loadProjectConfig, mergeWithCliOptions } from './config/project-config.js';
@@ -362,7 +363,7 @@ program
       let filteredRecords = records;
       let isPlaceholderMode = false;
       if (merged.status) {
-        const filters = parseStatusFilter(merged.status);
+        const filters = parseStatusFilter(String(merged.status));
         filteredRecords = filterByStatus(records, filters);
         log(`[info] Status filter: ${merged.status} → ${filteredRecords.length}/${records.length} records`);
 
@@ -533,7 +534,7 @@ program
           // Apply status filter if provided
           const cfgStatus = resolveConfig<string | undefined>(options.status, serveProjectCfg as Record<string, unknown>, 'status', null, undefined);
           if (cfgStatus) {
-            const filters = parseStatusFilter(cfgStatus);
+            const filters = parseStatusFilter(String(cfgStatus));
             records = filterByStatus(records, filters);
           }
 
@@ -573,6 +574,11 @@ program
       if (!quiet) console.log(`[info] Starting WireMock from: ${dir}`);
       if (!quiet) console.log(`[info] Port: ${port}`);
 
+      // Resolve log-dir: project config > global config > default (<rootDir>/logs)
+      const logDir = resolveConfig<string | undefined>(
+        undefined, serveProjectCfg as Record<string, unknown>, 'log-dir', 'log-dir', undefined,
+      );
+
       // Determine foreground vs background: -f wins > -b wins > config > default (background)
       const runForeground = options.foreground ? true
         : options.background ? false
@@ -598,6 +604,7 @@ program
           // CLI --jar > project config jar > (resolveJarPath handles global config internally)
           jarPath: options.jar ?? serveProjectCfg.jar,
           verbose: fgVerbose,
+          logDir,
         });
 
         registerShutdownHandler(server.stop, quiet, isTempDir ? dir : undefined);
@@ -633,10 +640,19 @@ program
           process.exit(1);
         }
 
-        const args = ['-jar', resolvedJar, '--port', String(port), '--root-dir', resolve(dir)];
-        const pid = spawnBackground(javaCmd, args, { port, rootDir: resolve(dir) });
+        const args = ['-jar', resolvedJar, '--port', String(port), '--root-dir', resolve(dir), '--verbose', 'true'];
+
+        // Setup log file for background process
+        const { logFilePath } = openLogFileForBackground({
+          port,
+          rootDir: resolve(dir),
+          logDir,
+        });
+
+        const pid = spawnBackground(javaCmd, args, { port, rootDir: resolve(dir), logFile: logFilePath });
 
         console.log(`✅ WireMock started on port ${port} (PID: ${pid})`);
+        if (!quiet) console.log(`   Log: ${logFilePath}`);
         process.exit(0);
       }
 
@@ -664,6 +680,7 @@ Global config keys (stored in ~/.swagger-to-wiremock/config.json):
   port <number>           Default WireMock port (e.g. 8080)
   output-dir <path>       Parent directory for all generated stubs
   foreground <true|false> Run WireMock in foreground by default
+  log-dir <path>          Directory for serve session log files
 `;
 
 const CONFIG_HELP_LOCAL = `
@@ -682,6 +699,7 @@ Local config keys (stored in .stwrc.yaml in project root):
   foreground <true|false> Run WireMock in foreground by default
   verbose <true|false>    Enable verbose logging
   quiet <true|false>      Suppress all output except errors
+  log-dir <path>          Directory for serve session log files (default: <output-dir>/logs)
   templated <true|false>  Use WireMock response templating
   dry-run <true|false>    Show what would be generated without writing
 `;
@@ -856,6 +874,9 @@ program
       const pid = String(entry.pid).padEnd(9);
       const stubs = formatStubsDir(entry.rootDir);
       console.log(`  ${port} ${pid} ${started.padEnd(18)} ${stubs}${status}`);
+      if (entry.logFile) {
+        console.log(`         Log: ${entry.logFile}`);
+      }
     }
 
     console.log('');
@@ -942,5 +963,94 @@ program
       process.exit(1);
     }
   });
+
+// ─── logs subcommand ─────────────────────────────────────────────────────────
+
+program
+  .command('logs')
+  .description('List or tail serve session log files')
+  .option('-p, --port <port>', 'Show log for a specific port (looks up running server registry)')
+  .option('-t, --tail', 'Tail the latest (or port-specific) log file')
+  .option('-n, --lines <count>', 'Number of lines to show when tailing (default: 50)', '50')
+  .option('--clear', 'Delete all log files in the log directory')
+  .action((options: { port?: string; tail?: boolean; lines?: string; clear?: boolean }) => {
+    const { config: logsProjectCfg } = loadProjectConfig();
+
+    // Resolve explicitly configured log directory (if set in config)
+    const configuredLogDir = resolveConfig<string | undefined>(
+      undefined, logsProjectCfg as Record<string, unknown>, 'log-dir', 'log-dir', undefined,
+    );
+
+    // If port is specified, try to find log from registry first
+    if (options.port) {
+      const portNum = parseInt(options.port, 10);
+      const servers = getServerStatus();
+      const entry = servers.find((s) => s.port === portNum);
+
+      if (entry?.logFile && existsSync(entry.logFile)) {
+        if (options.tail) {
+          tailFile(entry.logFile, parseInt(options.lines ?? '50', 10));
+        } else {
+          console.log(`Log for port ${portNum}: ${entry.logFile}`);
+        }
+        return;
+      }
+    }
+
+    // Resolve log directory: config > default (~/.swagger-to-wiremock/logs/)
+    const logDirPath = configuredLogDir ?? join(homedir(), '.swagger-to-wiremock', 'logs');
+
+    if (options.clear) {
+      if (!existsSync(logDirPath)) {
+        console.log('No log directory found. Nothing to clear.');
+        return;
+      }
+      const files = listLogFiles(logDirPath, 1000);
+      if (files.length === 0) {
+        console.log('No log files found.');
+        return;
+      }
+      for (const file of files) {
+        rmSync(file.path);
+      }
+      console.log(`✅ Deleted ${files.length} log file${files.length > 1 ? 's' : ''}`);
+      return;
+    }
+
+    const logFiles = listLogFiles(logDirPath);
+
+    if (logFiles.length === 0) {
+      console.log(`No log files found in: ${logDirPath}`);
+      console.log('Start a server with "stw serve" to generate logs.');
+      return;
+    }
+
+    if (options.tail) {
+      // Tail the most recent log file
+      tailFile(logFiles[0]!.path, parseInt(options.lines ?? '50', 10));
+      return;
+    }
+
+    // List log files
+    console.log(`Log directory: ${logDirPath}`);
+    console.log('');
+    console.log('  FILE                                SIZE       DATE');
+    console.log('  ────                                ────       ────');
+    for (const file of logFiles) {
+      const size = file.size > 1024 ? `${(file.size / 1024).toFixed(1)} KB` : `${file.size} B`;
+      const date = file.mtime.toISOString().replace('T', ' ').replace(/:\d{2}\.\d+Z$/, '');
+      console.log(`  ${file.name.padEnd(38)}${size.padEnd(10)} ${date}`);
+    }
+    console.log('');
+  });
+
+/** Read the last N lines of a file and print to stdout */
+function tailFile(filePath: string, lines: number): void {
+  const content = readFileSync(filePath, 'utf8') as string;
+  const allLines = content.split('\n');
+  const tail = allLines.slice(-lines).join('\n');
+  console.log(`─── ${filePath} (last ${lines} lines) ───`);
+  console.log(tail);
+}
 
 program.parseAsync();
