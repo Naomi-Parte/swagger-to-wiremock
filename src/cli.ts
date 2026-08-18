@@ -83,7 +83,7 @@ interface ServeOptions {
   flat?: boolean;
   seed?: string;
   security?: boolean;
-  background?: boolean;
+  foreground?: boolean;
   verbose?: boolean;
   quiet?: boolean;
 }
@@ -431,7 +431,7 @@ program
   .command('serve [target]')
   .description('Start WireMock server from stubs directory, spec file, or catch-all stub (--stub)')
   .option('-p, --port <port>', 'Port for WireMock server (default: 8080)')
-  .option('-b, --background', 'Start server in background (detach, return immediately)')
+  .option('-f, --foreground', 'Keep server in foreground (block until Ctrl+C)')
   .option('--jar <path>', 'Path to WireMock standalone JAR')
   .option('--stub <status>', 'Start a catch-all server returning the given HTTP status code (e.g. --stub 200)')
   .option('--status <codes>', 'Filter by status code when serving a spec file (e.g. 2xx, 4xx)')
@@ -527,8 +527,33 @@ program
       if (!quiet) console.log(`[info] Starting WireMock from: ${dir}`);
       if (!quiet) console.log(`[info] Port: ${port}`);
 
-      // Background mode: spawn detached and exit immediately
-      if (options.background) {
+      // Foreground mode: start and block until exit
+      if (options.foreground) {
+        // Check port conflict
+        const portCheck = isPortOccupied(port);
+        if (portCheck.occupied && portCheck.entry) {
+          console.error(
+            `❌ Port ${port} is already in use (PID: ${portCheck.entry.pid}, stubs: ${portCheck.entry.rootDir})`,
+          );
+          process.exit(1);
+        }
+
+        const server = startServer({
+          rootDir: dir,
+          port,
+          jarPath: options.jar,
+          verbose,
+        });
+
+        registerShutdownHandler(server.stop, quiet, isTempDir ? dir : undefined);
+
+        // Keep the process alive until WireMock exits
+        const exitCode = await server.waitForExit();
+        process.exit(exitCode ?? 0);
+      }
+
+      // Background mode (default): spawn detached and exit immediately
+      {
         // Check port conflict
         const portCheck = isPortOccupied(port);
         if (portCheck.occupied && portCheck.entry) {
@@ -559,27 +584,6 @@ program
         process.exit(0);
       }
 
-      // Check port conflict before starting (foreground mode)
-      const portCheck = isPortOccupied(port);
-      if (portCheck.occupied && portCheck.entry) {
-        console.error(
-          `❌ Port ${port} is already in use (PID: ${portCheck.entry.pid}, stubs: ${portCheck.entry.rootDir})`,
-        );
-        process.exit(1);
-      }
-
-      const server = startServer({
-        rootDir: dir,
-        port,
-        jarPath: options.jar,
-        verbose,
-      });
-
-      registerShutdownHandler(server.stop, quiet, isTempDir ? dir : undefined);
-
-      // Keep the process alive until WireMock exits
-      const exitCode = await server.waitForExit();
-      process.exit(exitCode ?? 0);
     } catch (error) {
       console.error(`❌ ${formatErrorMessage(error)}`);
       if (verbose && error instanceof Error && error.stack) {

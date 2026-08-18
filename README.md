@@ -98,7 +98,7 @@ Options:
   -p, --port <port>      WireMock port (default: 8080)
   --jar <path>           Path to WireMock standalone JAR
   --stub <status>        Start a catch-all server returning the given HTTP status code
-  --background           Start server in background (detached)
+  -f, --foreground       Keep server in foreground (block until Ctrl+C)
   -v, --verbose          Show detailed logs
   -q, --quiet            Suppress output except errors
 
@@ -220,7 +220,7 @@ stw config set jar /path/to/wiremock-standalone-3.3.1.jar
 stw convert ./api.yaml -s 99
 
 # Start mock server in background from existing stubs
-stw serve ./wiremock-stubs --background
+stw serve ./wiremock-stubs              # starts in background by default
 
 # Check running servers
 stw status
@@ -318,20 +318,22 @@ Extensions are optional — specs without `x-wiremock-*` fields generate standar
 
 ### Serve Command
 
-Start WireMock directly — no manual JAR management:
+Start WireMock directly — no manual JAR management. Runs in **background by default**
+(use `-f` for foreground):
 
 ```bash
 # Serve directly from a spec file (convert + serve in one step)
 stw serve ./petstore.yaml                    # Convert then serve
 stw serve ./api.yaml --status 2xx            # Only 2xx responses
 stw serve ./api.yaml --port 9090 --no-security  # Custom port, skip auth
+stw serve ./petstore.yaml -f                 # Foreground (block until Ctrl+C)
 ```
 
 ```bash
 # Quick catch-all server (no spec needed)
 stw serve --stub 200                    # Returns 200 for any request
 stw serve --stub 503 --port 3000        # Simulate downstream outage
-stw serve --stub 429 --background       # Rate-limit stub, running in background
+stw serve --stub 429                    # Rate-limit stub (background by default)
 ```
 
 
@@ -346,7 +348,7 @@ swagger-to-wiremock convert ./api.yaml --serve
 swagger-to-wiremock serve ./stubs/2xx --port 9090
 
 # Run in background (detached process)
-stw serve ./stubs --background
+stw serve ./stubs -f                   # foreground (block until Ctrl+C)
 
 # Check what's running
 stw status
