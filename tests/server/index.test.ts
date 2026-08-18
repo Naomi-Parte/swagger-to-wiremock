@@ -95,7 +95,7 @@ describe('server', () => {
       // This will throw JAVA_NOT_FOUND since Java likely isn't available in test env,
       // but it proves the stubs dir validation passed
       try {
-        startServer({ rootDir: stubsDir, jarPath: fakeJar });
+        startServer({ rootDir: stubsDir, jarPath: fakeJar, noLogs: true });
       } catch (err) {
         // Should NOT be INVALID_STUBS_DIR — it should get past validation
         expect((err as ServerError).code).not.toBe('INVALID_STUBS_DIR');
@@ -113,7 +113,7 @@ describe('server', () => {
 
       // Will throw JAVA_NOT_FOUND but validates stubs dir detection passed
       try {
-        startServer({ rootDir: stubsDir, jarPath: fakeJar });
+        startServer({ rootDir: stubsDir, jarPath: fakeJar, noLogs: true });
       } catch (err) {
         expect((err as ServerError).code).not.toBe('INVALID_STUBS_DIR');
       }
@@ -134,7 +134,7 @@ describe('server', () => {
       delete process.env['JAVA_HOME'];
 
       try {
-        startServer({ rootDir: stubsDir, jarPath: fakeJar });
+        startServer({ rootDir: stubsDir, jarPath: fakeJar, noLogs: true });
       } catch (err) {
         if (err instanceof ServerError && err.code === 'JAVA_NOT_FOUND') {
           expect(err.message).toContain('Java is required');
@@ -177,7 +177,7 @@ describe('server', () => {
 
       // This test only works if Java is available — skip gracefully if not
       try {
-        const server = startServer({ rootDir: stubsDir, jarPath: fakeJar, port: 19999 });
+        const server = startServer({ rootDir: stubsDir, jarPath: fakeJar, port: 19999, noLogs: true });
         expect(server).toHaveProperty('stop');
         expect(server).toHaveProperty('port');
         expect(server).toHaveProperty('waitForExit');

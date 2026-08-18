@@ -13,6 +13,9 @@ const CLI_PATH = resolve(__dirname, '../../dist/cli.js');
 
 let tmpHome: string;
 
+// Use the real wiremock.jar in the project root — guaranteed to exist and pass validation
+const fakeJar = resolve(__dirname, '../../wiremock.jar');
+
 beforeEach(() => {
   tmpHome = join(tmpdir(), `stw-cli-config-${randomBytes(4).toString('hex')}`);
   mkdirSync(tmpHome, { recursive: true });
@@ -48,27 +51,26 @@ function runCli(args: string[]): RunResult {
 
 describe('cli config', () => {
   it('config set jar saves the path', () => {
-    const result = runCli(['config', 'set', 'jar', '/path/to/wiremock.jar']);
+    const result = runCli(['config', 'set', 'jar', fakeJar]);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('Set jar');
-    expect(result.stdout).toContain('/path/to/wiremock.jar');
 
     // Verify file was written
     const configPath = join(tmpHome, '.swagger-to-wiremock', 'config.json');
     expect(existsSync(configPath)).toBe(true);
     const config = JSON.parse(readFileSync(configPath, 'utf8'));
-    expect(config.jar).toBe('/path/to/wiremock.jar');
+    expect(config.jar).toBe(fakeJar);
   });
 
   it('config get jar shows the configured value', () => {
     // Set first
-    runCli(['config', 'set', 'jar', '/my/wiremock.jar']);
+    runCli(['config', 'set', 'jar', fakeJar]);
 
     // Then get
     const result = runCli(['config', 'get', 'jar']);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('jar:');
-    expect(result.stdout).toContain('/my/wiremock.jar');
+    expect(result.stdout).toContain(fakeJar);
   });
 
   it('config get shows (not set) for unconfigured key', () => {
@@ -78,7 +80,7 @@ describe('cli config', () => {
   });
 
   it('config unset removes the key', () => {
-    runCli(['config', 'set', 'jar', '/my/wiremock.jar']);
+    runCli(['config', 'set', 'jar', fakeJar]);
     const result = runCli(['config', 'unset', 'jar']);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('Removed');
@@ -89,13 +91,13 @@ describe('cli config', () => {
   });
 
   it('config list shows all values', () => {
-    runCli(['config', 'set', 'jar', '/my/wiremock.jar']);
+    runCli(['config', 'set', 'jar', fakeJar]);
     runCli(['config', 'set', 'port', '9090']);
 
     const result = runCli(['config', 'list']);
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('jar:');
-    expect(result.stdout).toContain('/my/wiremock.jar');
+    expect(result.stdout).toContain(fakeJar);
     expect(result.stdout).toContain('port:');
     expect(result.stdout).toContain('9090');
   });
@@ -110,14 +112,14 @@ describe('cli config', () => {
     const result = runCli(['config', 'set', 'unknown', 'value']);
     expect(result.status).toBe(1);
     const output = result.stdout + result.stderr;
-    expect(output).toContain('Unknown config key');
+    expect(output).toContain('Unknown global config key');
   });
 
   it('config get rejects unknown keys', () => {
     const result = runCli(['config', 'get', 'unknown']);
     expect(result.status).toBe(1);
     const output = result.stdout + result.stderr;
-    expect(output).toContain('Unknown config key');
+    expect(output).toContain('Unknown global config key');
   });
 
   it('config set port validates the value', () => {

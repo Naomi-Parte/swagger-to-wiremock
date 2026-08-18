@@ -52,7 +52,7 @@ describe('cli serve subcommand', () => {
     mkdirSync(join(fakeJar, '..'), { recursive: true });
     writeFileSync(fakeJar, '');
 
-    const result = runCli(['serve', '/does/not/exist/stubs', '--jar', fakeJar], 15000);
+    const result = runCli(['serve', '/does/not/exist/stubs', '--jar', fakeJar, '-f'], 15000);
 
     expect(result.status).toBe(1);
     const output = result.stdout + result.stderr;
@@ -65,7 +65,7 @@ describe('cli serve subcommand', () => {
     const fakeJar = join(dir, 'wiremock-standalone-3.3.1.jar');
     writeFileSync(fakeJar, '');
 
-    const result = runCli(['serve', dir, '--jar', fakeJar]);
+    const result = runCli(['serve', dir, '--jar', fakeJar, '-f']);
 
     expect(result.status).toBe(1);
     const output = result.stdout + result.stderr;

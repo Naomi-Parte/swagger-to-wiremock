@@ -3,7 +3,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { randomBytes } from 'crypto';
@@ -33,9 +33,15 @@ import {
 } from '../../src/config/index.js';
 
 describe('global config', () => {
+  /** Path to a real (empty) .jar file for tests that call setConfig('jar', ...) */
+  let fakeJar: string;
+
   beforeEach(() => {
     mockHomeDir = join(tmpdir(), `stw-config-test-${randomBytes(4).toString('hex')}`);
     mkdirSync(mockHomeDir, { recursive: true });
+    // Create a real .jar file so setConfig('jar') validation passes
+    fakeJar = join(mockHomeDir, 'wiremock.jar');
+    writeFileSync(fakeJar, '');
   });
 
   afterEach(() => {
@@ -105,16 +111,16 @@ describe('global config', () => {
 
   describe('setConfig', () => {
     it('creates config dir and file when they do not exist', () => {
-      setConfig('jar', '/my/wiremock.jar');
+      setConfig('jar', fakeJar);
 
       expect(existsSync(getConfigPath())).toBe(true);
       const content = JSON.parse(readFileSync(getConfigPath(), 'utf8'));
-      expect(content.jar).toBe('/my/wiremock.jar');
+      expect(content.jar).toBe(fakeJar);
     });
 
     it('sets jar as a string', () => {
-      setConfig('jar', '/path/to/wiremock-standalone-3.3.1.jar');
-      expect(getConfig('jar')).toBe('/path/to/wiremock-standalone-3.3.1.jar');
+      setConfig('jar', fakeJar);
+      expect(getConfig('jar')).toBe(fakeJar);
     });
 
     it('sets port as a number', () => {
@@ -131,15 +137,15 @@ describe('global config', () => {
     });
 
     it('overwrites existing values', () => {
-      setConfig('jar', '/old/path.jar');
-      setConfig('jar', '/new/path.jar');
-      expect(getConfig('jar')).toBe('/new/path.jar');
+      setConfig('jar', fakeJar);
+      setConfig('jar', fakeJar);
+      expect(getConfig('jar')).toBe(fakeJar);
     });
 
     it('preserves other keys when setting a new one', () => {
-      setConfig('jar', '/my.jar');
+      setConfig('jar', fakeJar);
       setConfig('port', '8080');
-      expect(getConfig('jar')).toBe('/my.jar');
+      expect(getConfig('jar')).toBe(fakeJar);
       expect(getConfig('port')).toBe(8080);
     });
   });
@@ -151,14 +157,14 @@ describe('global config', () => {
     });
 
     it('returns the set value', () => {
-      setConfig('jar', '/test.jar');
-      expect(getConfig('jar')).toBe('/test.jar');
+      setConfig('jar', fakeJar);
+      expect(getConfig('jar')).toBe(fakeJar);
     });
   });
 
   describe('unsetConfig', () => {
     it('removes a set key', () => {
-      setConfig('jar', '/test.jar');
+      setConfig('jar', fakeJar);
       unsetConfig('jar');
       expect(getConfig('jar')).toBeUndefined();
     });
@@ -170,13 +176,13 @@ describe('global config', () => {
     });
 
     it('removes config file when last key is unset', () => {
-      setConfig('jar', '/test.jar');
+      setConfig('jar', fakeJar);
       unsetConfig('jar');
       expect(existsSync(getConfigPath())).toBe(false);
     });
 
     it('preserves other keys', () => {
-      setConfig('jar', '/test.jar');
+      setConfig('jar', fakeJar);
       setConfig('port', '8080');
       unsetConfig('jar');
       expect(getConfig('jar')).toBeUndefined();
@@ -190,9 +196,9 @@ describe('global config', () => {
     });
 
     it('returns all set values', () => {
-      setConfig('jar', '/my.jar');
+      setConfig('jar', fakeJar);
       setConfig('port', '9090');
-      expect(listConfig()).toEqual({ jar: '/my.jar', port: 9090 });
+      expect(listConfig()).toEqual({ jar: fakeJar, port: 9090 });
     });
   });
 });
