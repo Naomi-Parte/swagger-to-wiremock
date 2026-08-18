@@ -8,6 +8,7 @@
 import { program } from 'commander';
 import { resolve, join } from 'path';
 import { existsSync, rmSync } from 'fs';
+import { createInterface } from 'readline';
 import { tmpdir } from 'os';
 import { execFileSync } from 'child_process';
 import { parseOpenAPISpec } from './parser/index.js';
@@ -138,6 +139,21 @@ function toPosixPath(p: string): string {
     return '/' + p[0]!.toLowerCase() + p.slice(2).replace(/\\/g, '/');
   }
   return p.replace(/\\/g, '/');
+}
+
+/**
+ * Prompt the user for yes/no confirmation.
+ * @param message - Question to display
+ * @returns true if user answers y/yes
+ */
+function confirmPrompt(message: string): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output: process.stderr });
+  return new Promise((res) => {
+    rl.question(`${message} (y/N) `, (answer) => {
+      rl.close();
+      res(answer.trim().toLowerCase() === 'y' || answer.trim().toLowerCase() === 'yes');
+    });
+  });
 }
 
 /**
@@ -701,18 +717,34 @@ program
   .command('stop [port]')
   .description('Stop a background WireMock server by port, or --all to stop all')
   .option('-a, --all', 'Stop all running servers')
-  .action((port: string | undefined, options: { all?: boolean }) => {
+  .option('-y, --yes', 'Skip confirmation prompt')
+  .action(async (port: string | undefined, options: { all?: boolean; yes?: boolean }) => {
     if (options.all) {
       // Get server entries before stopping (for temp dir cleanup)
       const servers = getServerStatus().filter((s) => s.alive);
+
+      if (servers.length === 0) {
+        console.log('No running WireMock servers to stop.');
+        return;
+      }
+
+      // Confirm before stopping all
+      if (!options.yes) {
+        console.log(`Found ${servers.length} running server${servers.length > 1 ? 's' : ''}:`);
+        for (const s of servers) {
+          console.log(`  Port ${s.port} (PID: ${s.pid})`);
+        }
+        const confirmed = await confirmPrompt('Stop all?');
+        if (!confirmed) {
+          console.log('Cancelled.');
+          return;
+        }
+      }
+
       const count = stopAllServers();
       // Clean up any temp dirs
       for (const server of servers) { cleanupTempStubDir(server.rootDir); }
-      if (count === 0) {
-        console.log('No running WireMock servers to stop.');
-      } else {
-        console.log(`✅ Stopped ${count} WireMock server${count > 1 ? 's' : ''}`);
-      }
+      console.log(`✅ Stopped ${count} WireMock server${count > 1 ? 's' : ''}`);
       return;
     }
 
