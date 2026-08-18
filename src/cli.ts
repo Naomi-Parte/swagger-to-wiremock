@@ -28,7 +28,7 @@ import { initConfig } from './config/init.js';
 import { createStubServerDir } from './server/stub-server.js';
 import { writeLocalConfig, unsetLocalConfig } from './config/local-writer.js';
 
-const version = '0.3.0';
+const version = '0.4.0';
 
 const EXAMPLES = `
 Examples:

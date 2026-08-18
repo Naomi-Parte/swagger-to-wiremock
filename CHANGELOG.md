@@ -2,6 +2,53 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-08-18
+
+### Added
+
+- **Documentation overhaul** — README fully rewritten to match v0.3.x feature set.
+  - Added `--templated` flag documentation to `convert` command reference.
+  - Added `logs` subcommand documentation.
+  - Added `--status`, `--flat`, `--seed`, `--no-security`, `--no-logs` options to `serve` command reference.
+  - Added `-y`/`--yes` flag to `stop` command reference.
+  - Added `-l`/`--local` flag documentation for `config set|get|unset|list`.
+  - Added `log-dir` and `no-logs` to global config keys documentation.
+  - Added "Session Logging" feature section.
+  - Added "Response Templating" feature section.
+  - Updated programmatic API example to use options object (`{ seed, templated }`).
+  - Updated project config example to include `templated` key.
+  - Removed "Not Yet Supported" section — all listed features are now implemented.
+  - Moved `WireMock response templating` and `x-wiremock-* custom extensions` to "Supported Formats" list.
+
+### Fixed
+
+- Version references updated to 0.4.0 across package.json and CLI source.
+
+## [0.3.0] - 2026-08-14
+
+### Added
+
+- **`--templated` flag** — Enable WireMock response templating (Handlebars). Generated response bodies use template syntax to echo request data (path parameters, query parameters, headers).
+- **`x-wiremock-*` custom extensions** — Add WireMock-specific behaviour directly in OpenAPI specs:
+  - `x-wiremock-delay` — Response delays (fixed, uniform, lognormal distributions).
+  - `x-wiremock-priority` — Override default status-based priority.
+  - `x-wiremock-scenario` — Stateful stubs with scenario state transitions.
+- **`logs` subcommand** — List, tail, or clear serve session log files. Options: `--port`, `--tail`, `--lines`, `--clear`.
+- **Session logging** — Background serve sessions are logged automatically to `~/.swagger-to-wiremock/logs/` (configurable via `log-dir`). Disable with `--no-logs` or `config set no-logs true`.
+- **`config -l` (local) flag** — `config set -l`, `config get -l`, `config unset -l`, `config list -l` to manage local project config (`.stwrc.yaml`) directly from the CLI.
+- **`serve` spec-file conversion** — `stw serve ./api.yaml` now auto-converts a spec file to stubs in a temp directory and serves them. Supports `--status`, `--flat`, `--seed`, `--no-security` options for inline conversion.
+- **`stop --yes` flag** — Skip confirmation prompt when stopping all servers.
+- **`log-dir` config key** — Set a custom directory for serve session logs (global and local).
+- **`no-logs` config key** — Disable session logging entirely (global and local).
+- **`serve --no-logs`** — Disable logging for a single serve session.
+- **`templated` local config key** — Enable response templating via `.stwrc.yaml`.
+
+### Changed
+
+- **`serve` default mode** — Now runs in background by default. Use `-f`/`--foreground` for blocking mode.
+- **Config keys** expanded: `jar`, `port`, `output-dir`, `foreground`, `log-dir`, `no-logs`.
+- **`generateMappings` API** — Now accepts an options object `{ seed, templated }` instead of a bare seed number (number-only form still accepted for backwards compatibility).
+
 ## [0.2.0] - 2026-08-10
 
 ### Added
@@ -10,9 +57,16 @@ All notable changes to this project will be documented in this file.
 - **`--serve` flag + `serve` subcommand** — Start WireMock standalone directly after generation (`convert --serve`) or from existing stubs (`serve <dir>`). Includes `--port` and `--jar` flags, JAR auto-discovery, Java detection, and graceful Ctrl+C shutdown.
 - **OpenAPI 3.1 support** — Specs using `openapi: "3.1.x"` are now accepted. Type arrays (`type: ["string", "null"]`), `const`, `prefixItems`, and `$defs` are normalized for compatibility with json-schema-faker.
 - **Request body matchers** — POST/PUT/PATCH endpoints now generate `bodyPatterns` with `matchesJsonPath` assertions for required fields, ensuring WireMock only matches requests with the expected body structure.
-- **Security scheme matchers** — `securitySchemes` are resolved and produce request header/query matchers: Bearer (`Authorization: Bearer .+`), Basic (`Authorization: Basic .+`), API key (header or query), OAuth2, and OpenID Connect. mTLS is skipped gracefully (transport-layer).
+- **Security scheme matchers** — `securitySchemes` are resolved and produce request header/query matchers: Bearer (`Authorization: [REDACTED_TOKEN]`), Basic (`Authorization: Basic .+`), API key (header or query), OAuth2, and OpenID Connect. mTLS is skipped gracefully (transport-layer).
 - **`--no-security` flag** — Skip security scheme matchers entirely for simplified testing.
 - **Global config** — `config set|get|unset|list` subcommand for persistent user settings (`~/.swagger-to-wiremock/config.json`). Set `jar` path once, never pass `--jar` again.
+- **`init` subcommand** — Generate a `.stwrc.yaml` config file with all options documented.
+- **`status` subcommand** — List running background WireMock servers (port, PID, stubs dir, started time).
+- **`stop` subcommand** — Stop a background WireMock server by port, or `--all` to stop all.
+- **`dir` subcommand** — Print the resolved wiremock output directory.
+- **Project config (`.stwrc.yaml`)** — Teams can commit shared defaults. Discovery walks up to git root.
+- **`output-dir` config** — Centralized parent directory for generated stubs.
+- **`--stub` mode** — `stw serve --stub <status>` starts a catch-all server returning the given HTTP status (no spec needed).
 
 ### Changed
 

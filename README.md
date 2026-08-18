@@ -84,6 +84,7 @@ Options:
   --status <codes>       Filter by status: 2xx, 4xx, 5xx, or specific codes
   --flat                 Single folder output (all statuses, priority-ordered)
   --empty                Generate skeleton stubs with TODO placeholder bodies
+  --templated            Use WireMock response templating (Handlebars) to echo request data
   --dry-run              Show what would be generated without writing
   --no-clean             Don't remove output directory before writing
   --serve                Start WireMock after generating stubs
@@ -91,43 +92,92 @@ Options:
   --jar <path>           Path to WireMock standalone JAR
   --no-security          Skip security scheme matchers
   --help-examples        Show usage examples
+```
 
+```
 swagger-to-wiremock serve [target] [options]
+
+  Start WireMock from a stubs directory, spec file, or catch-all stub (--stub).
+  Runs in background by default.
+
+  Target can be:
+    <dir>                  Existing stubs directory (must contain mappings/)
+    <spec.yaml|json>       Spec file — auto-converted to stubs then served
+    (omitted)              Defaults to ./wiremock/ if it exists
 
 Options:
   -p, --port <port>      WireMock port (default: 8080)
   --jar <path>           Path to WireMock standalone JAR
   --stub <status>        Start a catch-all server returning the given HTTP status code
+  --status <codes>       Filter by status code when serving a spec file (e.g. 2xx, 4xx)
+  --flat                 Use flat output when converting a spec file
+  -s, --seed <seed>      Seed for deterministic response generation
+  --no-security          Skip security scheme matchers when converting a spec file
   -f, --foreground       Keep server in foreground (block until Ctrl+C)
   -b, --background       Start server in background [default]
   -v, --verbose          Show detailed logs
   -q, --quiet            Suppress output except errors
+  --no-logs              Disable session logging for this serve
+```
 
+```
 swagger-to-wiremock status
 
   List running background WireMock servers (port, PID, stubs dir, started time)
+```
 
+```
+swagger-to-wiremock stop [port] [options]
+
+  Stop a background WireMock server by port, or all servers.
+
+Options:
+  -a, --all              Stop all running servers
+  -y, --yes              Skip confirmation prompt
+```
+
+```
 swagger-to-wiremock dir
 
   Print the resolved wiremock output directory (for use with cd)
+```
 
-swagger-to-wiremock stop [port]
-
-  Stop a background WireMock server by port, or all servers if no port given
-
+```
 swagger-to-wiremock init [options]
 
   Generate a .stwrc.yaml config file with all options documented
-  -f, --force            Overwrite existing config file
 
-swagger-to-wiremock config <set|get|unset|list> [key] [value]
+Options:
+  -f, --force            Overwrite existing config file
+```
+
+```
+swagger-to-wiremock logs [options]
+
+  List or tail serve session log files
+
+Options:
+  -p, --port <port>      Show log for a specific port
+  -t, --tail             Tail the latest (or port-specific) log file
+  -n, --lines <count>    Number of lines to show when tailing (default: 50)
+  --clear                Delete all log files in the log directory
+```
+
+```
+swagger-to-wiremock config <set|get|unset|list> [key] [value] [options]
+
+  Manage global and local project configuration.
 
   set <key> <value>      Set a global config value
+  set -l <key> <value>   Set a local project config value (.stwrc.yaml)
   get <key>              Show a config value
+  get -l <key>           Show a local project config value
   unset <key>            Remove a config value
-  list                   Show all config values
+  unset -l <key>         Remove from local project config
+  list                   Show all global config values
+  list -l                Show local project config values
 
-  Valid keys: jar, port, output-dir, foreground
+  Global config keys: jar, port, output-dir, foreground, log-dir, no-logs
 ```
 
 > **Tip:** The binary is also available as `stw` — a short alias that works
@@ -152,6 +202,7 @@ flat: true
 status: 2xx,4xx
 no-security: true
 port: 9090
+templated: true
 ```
 
 ### `output-dir` — Centralized Output Parent
@@ -211,6 +262,9 @@ stw convert ./api.yaml --status 4xx,5xx
 # Skeleton for testers to fill in
 stw convert ./api.yaml --empty
 
+# Response templating (Handlebars — echoes request data in responses)
+stw convert ./api.yaml --templated
+
 # Skip auth matchers for easier testing
 stw convert ./api.yaml --no-security
 
@@ -223,17 +277,37 @@ stw convert ./api.yaml -s 99
 # Start mock server in background from existing stubs
 stw serve ./wiremock-stubs              # starts in background by default
 
+# Serve directly from a spec file
+stw serve ./petstore.yaml               # convert + serve in one step
+stw serve ./api.yaml --status 2xx       # only 2xx responses
+
 # Check running servers
 stw status
 
 # Stop a server
 stw stop 8080
 
+# Stop all servers (skip confirmation)
+stw stop --all --yes
+
+# View serve session logs
+stw logs
+stw logs --tail
+stw logs --port 8080 --tail
+
 # Initialize project config
 stw init
 ```
 
 ## Features
+
+### Response Templating
+
+Use `--templated` to enable WireMock's Handlebars-based response templating. Response bodies will echo request data (path params, query params, headers) using WireMock template syntax:
+
+```bash
+stw convert ./api.yaml --templated
+```
 
 ### Request Body Matching
 
@@ -337,19 +411,9 @@ stw serve --stub 503 --port 3000        # Simulate downstream outage
 stw serve --stub 429                    # Rate-limit stub (background by default)
 ```
 
-
 ```bash
-# Set JAR path once
-swagger-to-wiremock config set jar ./wiremock/wiremock-standalone-3.3.1.jar
-
-# Generate + serve
-swagger-to-wiremock convert ./api.yaml --serve
-
-# Or serve existing stubs
-swagger-to-wiremock serve ./stubs/2xx --port 9090
-
-# Run in background (detached process)
-stw serve ./stubs -f                   # foreground (block until Ctrl+C)
+# Serve existing stubs
+stw serve ./stubs/2xx --port 9090
 
 # Check what's running
 stw status
@@ -362,6 +426,22 @@ stw stop --all
 ```
 
 JAR resolution: `--jar` flag → `WIREMOCK_JAR` env → global config → auto-detect in ./wiremock/ or ./lib/
+
+### Session Logging
+
+Background serve sessions are logged automatically. View and manage logs:
+
+```bash
+stw logs                    # List all log files
+stw logs --tail             # Tail the most recent log
+stw logs --port 8080 --tail # Tail log for a specific port
+stw logs --clear            # Delete all log files
+```
+
+Disable logging for a specific session with `--no-logs`, or globally:
+```bash
+stw config set no-logs true
+```
 
 ## Tester Workflow
 
@@ -395,7 +475,7 @@ import {
 
 const spec = await parseOpenAPISpec('./api.yaml');
 const records = transformSpec(spec);
-const mappings = generateMappings(records, 42);
+const mappings = generateMappings(records, { seed: 42, templated: false });
 
 await writeStubs(mappings, records, {
   outputDir: './wiremock-stubs',
@@ -427,13 +507,8 @@ diff -r out1 out2  # No differences
 - ✅ Security schemes (Bearer, Basic, API Key, OAuth2, OIDC)
 - ✅ `allOf` / `oneOf` / `anyOf`
 - ✅ Deterministic output (seeded)
-
-## Not Yet Supported
-
-- ❌ WireMock response templating
-- ❌ `x-wiremock-*` custom extensions
-- ❌ `--watch` mode (regenerate on spec change)
-- ❌ Diff command (compare two generation runs)
+- ✅ WireMock response templating (`--templated`)
+- ✅ `x-wiremock-*` custom extensions (delay, priority, scenario)
 
 ## License
 
