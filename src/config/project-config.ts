@@ -4,12 +4,10 @@
  *   a `"swagger-to-wiremock"` key in `package.json` — giving teams a zero-flag
  *   experience when shared defaults are committed to the repo.
  *
- * Discovery order (first match wins):
- *   1. `.stwrc.yaml` in cwd
- *   2. `.stwrc.yml` in cwd
- *   3. `.stwrc.json` in cwd
- *   4. Walk up directories until git root (`.git/` found) checking each level
- *   5. `package.json` → `"swagger-to-wiremock"` key (in cwd or git root)
+ * Discovery walks linearly from cwd up to the filesystem root. At each
+ * directory it checks (in order): `.stwrc.yaml`, `.stwrc.yml`, `.stwrc.json`.
+ * If no rc file is found in any directory, a second pass checks for a
+ * `"swagger-to-wiremock"` key in `package.json` at each level.
  *
  * CLI flags always override project config values.
  */
@@ -44,26 +42,6 @@ export interface ProjectConfig {
 
 /** File names to search for, in priority order */
 const CONFIG_FILE_NAMES = ['.stwrc.yaml', '.stwrc.yml', '.stwrc.json'];
-
-/**
- * Walk up from `startDir` until we find a `.git/` directory (the repo root).
- * Returns the directory containing `.git/`, or null if not found.
- */
-function findGitRoot(startDir: string): string | null {
-  let current = resolve(startDir);
-  const root = dirname(current) === current ? current : undefined; // filesystem root guard
-
-  while (true) {
-    if (existsSync(join(current, '.git'))) {
-      return current;
-    }
-    const parent = dirname(current);
-    if (parent === current) break; // reached filesystem root
-    current = parent;
-  }
-
-  return null;
-}
 
 /**
  * Attempt to read and parse a config file at `filePath`.
@@ -135,18 +113,15 @@ export interface LoadProjectConfigResult {
  */
 export function loadProjectConfig(cwd: string = process.cwd()): LoadProjectConfigResult {
   const resolvedCwd = resolve(cwd);
-  const dirsToCheck: string[] = [resolvedCwd];
+  const dirsToCheck: string[] = [];
 
-  // Find git root and add intermediate directories
-  const gitRoot = findGitRoot(resolvedCwd);
-  if (gitRoot && gitRoot !== resolvedCwd) {
-    // Walk up from cwd to git root, checking each directory
-    let current = dirname(resolvedCwd);
-    while (current !== gitRoot && current !== dirname(current)) {
-      dirsToCheck.push(current);
-      current = dirname(current);
-    }
-    dirsToCheck.push(gitRoot);
+  // Walk linearly from cwd up to filesystem root
+  let current = resolvedCwd;
+  while (true) {
+    dirsToCheck.push(current);
+    const parent = dirname(current);
+    if (parent === current) break; // reached filesystem root
+    current = parent;
   }
 
   // Search for rc files in each directory
@@ -160,7 +135,7 @@ export function loadProjectConfig(cwd: string = process.cwd()): LoadProjectConfi
     }
   }
 
-  // Fall back to package.json key (check cwd first, then git root)
+  // Fall back to package.json key (same traversal order)
   for (const dir of dirsToCheck) {
     const config = tryReadPackageJson(dir);
     if (config) {

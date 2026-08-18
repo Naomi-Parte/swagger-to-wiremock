@@ -129,10 +129,8 @@ describe('project-config', () => {
       const childDir = join(testDir, 'packages', 'api');
       mkdirSync(childDir, { recursive: true });
 
-      // Put config in testDir (simulating repo root)
+      // Put config in testDir (ancestor directory)
       writeFileSync(join(testDir, '.stwrc.yaml'), 'output: ./from-parent\n', 'utf8');
-      // Put .git in testDir so it's treated as git root
-      mkdirSync(join(testDir, '.git'));
 
       const result = loadProjectConfig(childDir);
       expect(result.config.output).toBe('./from-parent');
