@@ -9,7 +9,7 @@ import { program } from 'commander';
 import { resolve, join } from 'path';
 import { existsSync, rmSync } from 'fs';
 import { createInterface } from 'readline';
-import { tmpdir } from 'os';
+import { tmpdir, homedir } from 'os';
 import { execFileSync } from 'child_process';
 import { parseOpenAPISpec } from './parser/index.js';
 import { transformSpec } from './transformer/index.js';
@@ -154,6 +154,31 @@ function confirmPrompt(message: string): Promise<boolean> {
       res(answer.trim().toLowerCase() === 'y' || answer.trim().toLowerCase() === 'yes');
     });
   });
+}
+
+/**
+ * Format a stubs directory path for display in `stw status`.
+ * - Temp stw-stub-* → stub:<status>
+ * - Temp stw-serve-* → serve:<spec-name>
+ * - Path starts with home dir → ~/...
+ * - Otherwise → full path
+ */
+function formatStubsDir(dir: string): string {
+  const baseName = dir.replace(/^.*[\\/]/, '');
+
+  // Temp stub dirs: stw-stub-<status>-<timestamp>
+  const stubMatch = baseName.match(/^stw-stub-(\d+)-/);
+  if (stubMatch) return `stub:${stubMatch[1]}`;
+
+  // Temp serve dirs: stw-serve-<specname>-<timestamp>
+  const serveMatch = baseName.match(/^stw-serve-(.+?)-\d+$/);
+  if (serveMatch) return `serve:${serveMatch[1]}`;
+
+  // Replace home dir with ~
+  const home = homedir();
+  if (dir.startsWith(home)) return '~' + dir.slice(home.length).replace(/\\/g, '/');
+
+  return dir;
 }
 
 /**
@@ -674,18 +699,16 @@ program
 
     console.log('Running servers:');
     console.log('');
-    console.log('  PORT   PID       STUBS DIR                        STARTED');
-    console.log('  ────   ───       ─────────                        ───────');
+    console.log('  PORT   PID       STARTED            STUBS');
+    console.log('  ────   ───       ───────            ─────');
 
     for (const entry of servers) {
       const status = entry.alive ? '' : ' (dead)';
-      const started = entry.startedAt.replace('T', ' ').replace(/\.\d+Z$/, '');
+      const started = entry.startedAt.replace('T', ' ').replace(/:\d{2}\.\d+Z$/, '').replace(/:\d{2}Z$/, '');
       const port = String(entry.port).padEnd(6);
       const pid = String(entry.pid).padEnd(9);
-      const rootDir = entry.rootDir.length > 32
-        ? '...' + entry.rootDir.slice(-29)
-        : entry.rootDir.padEnd(32);
-      console.log(`  ${port} ${pid} ${rootDir} ${started}${status}`);
+      const stubs = formatStubsDir(entry.rootDir);
+      console.log(`  ${port} ${pid} ${started.padEnd(18)} ${stubs}${status}`);
     }
 
     console.log('');
