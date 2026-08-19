@@ -24,6 +24,7 @@ import { openLogFileForBackground, listLogFiles } from './server/logger.js';
 import { isPortOccupied, spawnBackground, getServerStatus, stopServer, stopAllServers } from './server/process-manager.js';
 import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
 import { loadProjectConfig, mergeWithCliOptions } from './config/project-config.js';
+import { validatePortRange } from './server/port-utils.js';
 import { initConfig } from './config/init.js';
 import { createStubServerDir } from './server/stub-server.js';
 import { writeLocalConfig, unsetLocalConfig } from './config/local-writer.js';
@@ -446,6 +447,14 @@ program
           process.exit(1);
         }
 
+        // Validate against global port range
+        try {
+          validatePortRange(port);
+        } catch (rangeErr) {
+          console.error(`❌ ${rangeErr instanceof Error ? rangeErr.message : String(rangeErr)}`);
+          process.exit(1);
+        }
+
         if (!quiet) console.log(`\n[info] Starting WireMock on port ${port}...`);
 
         const server = startServer({
@@ -503,6 +512,14 @@ program
       );
       if (Number.isNaN(port) || port < 1 || port > 65535) {
         console.error('❌ Invalid port: must be a number between 1 and 65535');
+        process.exit(1);
+      }
+
+      // Validate against global port range
+      try {
+        validatePortRange(port);
+      } catch (rangeErr) {
+        console.error(`❌ ${rangeErr instanceof Error ? rangeErr.message : String(rangeErr)}`);
         process.exit(1);
       }
 
@@ -702,6 +719,8 @@ Global config keys (stored in ~/.swagger-to-wiremock/config.json):
 
   jar <path>              Path to WireMock standalone JAR (e.g. ./wiremock.jar)
   port <number>           Default WireMock port (e.g. 8080)
+  port-range-min <number> Minimum allowed port (e.g. 3000)
+  port-range-max <number> Maximum allowed port (e.g. 4000)
   output-dir <path>       Parent directory for all generated stubs
   foreground <true|false> Run WireMock in foreground by default
   log-dir <path>          Directory for serve session log files

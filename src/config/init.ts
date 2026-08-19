@@ -52,6 +52,12 @@ const TEMPLATE = `# swagger-to-wiremock project configuration
 # Port for WireMock server
 # port: 8080
 
+# Port range restriction (global config only — not project-level)
+# Limits which ports stw is allowed to use. Prevents port-hoarding in shared environments.
+# Set via: stw config set port-range-min 3000 / stw config set port-range-max 4000
+# port-range-min: 1
+# port-range-max: 65535
+
 # Run WireMock in foreground by default (block until Ctrl+C)
 # foreground: false
 

@@ -4,6 +4,8 @@
  *   This provides persistent settings (like JAR path) so users don't need to pass flags every time.
  *
  * Supported keys:
+ *   - port-range-min: Minimum allowed port for WireMock server
+ *   - port-range-max: Maximum allowed port for WireMock server
  *   - jar: Path to WireMock standalone JAR
  *   - port: Default port for WireMock server
  */
@@ -13,12 +15,14 @@ import { join, resolve } from 'path';
 import { homedir } from 'os';
 
 /** Known configuration keys and their expected types */
-export type ConfigKey = 'jar' | 'port' | 'output-dir' | 'foreground' | 'log-dir' | 'no-logs';
+export type ConfigKey = 'jar' | 'port' | 'output-dir' | 'foreground' | 'log-dir' | 'no-logs' | 'port-range-min' | 'port-range-max';
 
 /** Configuration object shape */
 export interface GlobalConfig {
   jar?: string;
   port?: number;
+  'port-range-min'?: number;
+  'port-range-max'?: number;
   'output-dir'?: string;
   'log-dir'?: string;
   'no-logs'?: boolean;
@@ -26,7 +30,7 @@ export interface GlobalConfig {
 }
 
 /** All valid config keys */
-const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir', 'foreground', 'log-dir', 'no-logs'];
+const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir', 'foreground', 'log-dir', 'no-logs', 'port-range-min', 'port-range-max'];
 
 /**
  * Resolve a path to absolute. If already absolute, returns as-is.
@@ -107,6 +111,28 @@ export function setConfig(key: ConfigKey, value: string): void {
       throw new Error(`Invalid port value: ${value}. Must be a number between 1 and 65535.`);
     }
     config.port = numValue;
+  } else if (key === 'port-range-min') {
+    const numValue = parseInt(value, 10);
+    if (Number.isNaN(numValue) || numValue < 1 || numValue > 65535) {
+      throw new Error(`Invalid port-range-min value: ${value}. Must be a number between 1 and 65535.`);
+    }
+    // Validate min <= max if max is already set
+    const currentMax = config['port-range-max'];
+    if (currentMax !== undefined && numValue > currentMax) {
+      throw new Error(`Invalid port-range-min: ${numValue} is greater than current port-range-max (${currentMax}).`);
+    }
+    config['port-range-min'] = numValue;
+  } else if (key === 'port-range-max') {
+    const numValue = parseInt(value, 10);
+    if (Number.isNaN(numValue) || numValue < 1 || numValue > 65535) {
+      throw new Error(`Invalid port-range-max value: ${value}. Must be a number between 1 and 65535.`);
+    }
+    // Validate max >= min if min is already set
+    const currentMin = config['port-range-min'];
+    if (currentMin !== undefined && numValue < currentMin) {
+      throw new Error(`Invalid port-range-max: ${numValue} is less than current port-range-min (${currentMin}).`);
+    }
+    config['port-range-max'] = numValue;
   } else if (key === 'jar') {
     if (!value) {
       throw new Error('Invalid jar: path cannot be empty.');

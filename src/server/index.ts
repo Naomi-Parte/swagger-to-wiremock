@@ -15,6 +15,7 @@ import type { ServerOptions, ServerProcess } from './types.js';
 export type { ServerOptions, ServerProcess } from './types.js';
 export { resolveJarPath } from './jar-resolver.js';
 export { spawnBackground, getServerStatus, stopServer, stopAllServers, isPortOccupied } from './process-manager.js';
+export { validatePortRange, getPortRange } from './port-utils.js';
 export { SessionLogger, listLogFiles, resolveLogDir, openLogFileForBackground } from './logger.js';
 
 /**
