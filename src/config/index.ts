@@ -8,6 +8,7 @@
  *   - port-range-max: Maximum allowed port for WireMock server
  *   - jar: Path to WireMock standalone JAR
  *   - port: Default port for WireMock server
+ *   - auto-port: Automatically find next available port when requested port is busy
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
@@ -15,7 +16,7 @@ import { join, resolve } from 'path';
 import { homedir } from 'os';
 
 /** Known configuration keys and their expected types */
-export type ConfigKey = 'jar' | 'port' | 'output-dir' | 'foreground' | 'log-dir' | 'no-logs' | 'port-range-min' | 'port-range-max';
+export type ConfigKey = 'jar' | 'port' | 'output-dir' | 'foreground' | 'log-dir' | 'no-logs' | 'port-range-min' | 'port-range-max' | 'auto-port';
 
 /** Configuration object shape */
 export interface GlobalConfig {
@@ -26,11 +27,12 @@ export interface GlobalConfig {
   'output-dir'?: string;
   'log-dir'?: string;
   'no-logs'?: boolean;
+  'auto-port'?: boolean;
   foreground?: boolean;
 }
 
 /** All valid config keys */
-const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir', 'foreground', 'log-dir', 'no-logs', 'port-range-min', 'port-range-max'];
+const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir', 'foreground', 'log-dir', 'no-logs', 'port-range-min', 'port-range-max', 'auto-port'];
 
 /**
  * Resolve a path to absolute. If already absolute, returns as-is.
@@ -167,6 +169,12 @@ export function setConfig(key: ConfigKey, value: string): void {
       throw new Error('Invalid no-logs value: must be "true" or "false".');
     }
     config['no-logs'] = lower === 'true';
+  } else if (key === 'auto-port') {
+    const lower = value.toLowerCase();
+    if (lower !== 'true' && lower !== 'false') {
+      throw new Error('Invalid auto-port value: must be "true" or "false".');
+    }
+    config['auto-port'] = lower === 'true';
   } else {
     (config as Record<string, unknown>)[key] = value;
   }

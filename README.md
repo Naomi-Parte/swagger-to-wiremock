@@ -179,7 +179,14 @@ swagger-to-wiremock config <set|get|unset|list> [key] [value] [options]
   list                   Show all global config values
   list -l                Show local project config values
 
-  Global config keys: jar, port, output-dir, foreground, log-dir, no-logs
+  Global config keys: jar, port, port-range-min, port-range-max, auto-port, output-dir, foreground, log-dir, no-logs
+```
+
+```
+swagger-to-wiremock serve [target] [options]
+
+  Additional options (v1.1.0+):
+  --no-auto-port           Disable automatic port increment when port is unavailable
 ```
 
 > **Tip:** The binary is also available as `stw` — a short alias that works
@@ -246,6 +253,59 @@ stw dir                     # prints the absolute output-dir path
 5. `package.json` → `"swagger-to-wiremock"` key
 
 CLI flags always override config file values.
+
+### Port Range — Restrict Allowed Ports
+
+Enforce a valid port window to prevent port-hoarding in shared test environments. This is a **global-only** setting (not project-level):
+
+```bash
+stw config set port-range-min 3000
+stw config set port-range-max 4000
+```
+
+Any port used with `--port`, project config, or the global `port` default is validated against this range:
+
+```bash
+stw serve ./stubs --port 9090
+# ❌ Port 9090 is outside the allowed range (3000–4000).
+
+stw serve ./stubs --port 3500
+# ✅ Works normally
+```
+
+Remove the restriction:
+```bash
+stw config unset port-range-min
+stw config unset port-range-max
+```
+
+### Port Auto-Increment
+
+When the requested port is unavailable, `stw` automatically tries the next port in sequence. This is enabled by default — no flag needed:
+
+```bash
+# Port 8080 is already in use by another process
+stw serve ./stubs
+# ⚠️  Port 8080 unavailable — using 8081 instead.
+# ✅ WireMock started on port 8081 (PID: 12345)
+```
+
+Auto-increment respects the configured port range and caps at 20 attempts.
+
+Disable for strict port control:
+```bash
+# Via CLI flag
+stw serve ./stubs --no-auto-port
+# ❌ Port 8080 is already in use (PID: 1234, stubs: ./foo)
+
+# Or globally
+stw config set auto-port false
+```
+
+Re-enable:
+```bash
+stw config set auto-port true
+```
 
 ## Usage Examples
 

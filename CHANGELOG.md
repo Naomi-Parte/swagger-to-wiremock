@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-08-19
+
+### Added
+
+- **Port range config** — New global config keys `port-range-min` and `port-range-max` restrict which ports `stw` is allowed to use. Prevents port-hoarding in shared test environments. Cross-validated at set-time (min cannot exceed max). Set via `stw config set port-range-min 3000` / `stw config set port-range-max 4000`.
+- **Port auto-increment** — When the requested port is unavailable, `stw` automatically tries the next port in sequence (up to 20 attempts within the configured range) and prints a `⚠️` warning. Enabled by default. Disable per-command with `--no-auto-port` or globally with `stw config set auto-port false`. Uses TCP probe to detect OS-level port conflicts, not just stw-managed servers.
+
+---
+
 ## [1.0.0] - 2026-08-19
 
 ### Changed

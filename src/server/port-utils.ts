@@ -1,10 +1,13 @@
 /**
  * @file Port utilities
- * @description Validates ports against a globally-configured range.
+ * @description Port validation, availability checking, and auto-increment logic.
  *   Prevents port-hoarding in shared test environments by enforcing
  *   a valid port window set via `stw config set port-range-min / port-range-max`.
+ *   Provides TCP-level port availability probing and automatic fallback to the
+ *   next available port when the requested port is busy.
  */
 
+import { createServer } from 'net';
 import { readConfig } from '../config/index.js';
 
 export interface PortRange {
@@ -43,8 +46,79 @@ export function validatePortRange(port: number): void {
 
   if (port < effectiveMin || port > effectiveMax) {
     throw new Error(
-      `Port ${port} is outside the allowed range (${effectiveMin}–${effectiveMax}).\n` +
-      `   Update the range with: stw config set port-range-min / port-range-max`,
+      `Port ${port} is outside the allowed range (${effectiveMin}–${effectiveMax}).`,
     );
   }
+}
+
+/**
+ * Check if a port is available by attempting to bind a TCP server to it.
+ * This detects OS-level port conflicts (not just stw-managed servers).
+ *
+ * @param port - Port number to check
+ * @returns true if the port is free, false if occupied
+ */
+export function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = createServer();
+
+    server.once('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+        resolve(false);
+      } else {
+        // Unexpected error — treat as unavailable
+        resolve(false);
+      }
+    });
+
+    server.once('listening', () => {
+      server.close(() => resolve(true));
+    });
+
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+export interface FindPortOptions {
+  /** Maximum port number to try (default: port-range-max or 65535) */
+  max?: number;
+  /** Maximum number of ports to attempt (default: 20) */
+  maxRetries?: number;
+}
+
+/**
+ * Find an available port starting from `startPort`, incrementing until one is free.
+ *
+ * Respects the configured port range — will not go above the range max.
+ * Returns the first available port, or throws if none found within limits.
+ *
+ * @param startPort - Port to try first
+ * @param options - Optional max port and retry limits
+ * @returns The first available port
+ * @throws Error if no port is available within the range/retry limit
+ */
+export async function findAvailablePort(startPort: number, options: FindPortOptions = {}): Promise<number> {
+  const range = getPortRange();
+  const max = options.max ?? range.max;
+  const maxRetries = options.maxRetries ?? 20;
+
+  let attempts = 0;
+  let candidate = startPort;
+
+  while (candidate <= max && attempts < maxRetries) {
+    const available = await isPortAvailable(candidate);
+    if (available) {
+      return candidate;
+    }
+    attempts++;
+    candidate++;
+  }
+
+  // All attempts exhausted
+  const rangeDesc = (range.min !== 1 || range.max !== 65535)
+    ? ` in range ${range.min}–${range.max}`
+    : '';
+  throw new Error(
+    `No available port found${rangeDesc} (tried ${attempts} ports starting from ${startPort}).`,
+  );
 }

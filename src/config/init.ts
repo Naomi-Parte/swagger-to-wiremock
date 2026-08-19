@@ -61,6 +61,10 @@ const TEMPLATE = `# swagger-to-wiremock project configuration
 # Run WireMock in foreground by default (block until Ctrl+C)
 # foreground: false
 
+# Automatically try the next port when the requested port is busy (default: true)
+# Disable with --no-auto-port flag or set to false here
+# auto-port: true
+
 # Path to WireMock standalone JAR (absolute or relative to project root)
 # jar: /path/to/wiremock-standalone.jar
 

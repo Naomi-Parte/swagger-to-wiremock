@@ -24,12 +24,12 @@ import { openLogFileForBackground, listLogFiles } from './server/logger.js';
 import { isPortOccupied, spawnBackground, getServerStatus, stopServer, stopAllServers } from './server/process-manager.js';
 import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
 import { loadProjectConfig, mergeWithCliOptions } from './config/project-config.js';
-import { validatePortRange } from './server/port-utils.js';
+import { validatePortRange, findAvailablePort } from './server/port-utils.js';
 import { initConfig } from './config/init.js';
 import { createStubServerDir } from './server/stub-server.js';
 import { writeLocalConfig, unsetLocalConfig } from './config/local-writer.js';
 
-const version = '1.0.0';
+const version = '1.1.0';
 
 const binName = (() => {
   const raw = basename(process.argv[1] || 'stw').replace(/\.(js|ts|mjs|cjs)$/, '');
@@ -87,6 +87,7 @@ interface ConvertOptions {
 interface ServeOptions {
   port?: string;
   jar?: string;
+  autoPort?: boolean; // Commander handles --no-auto-port as autoPort=false
   stub?: string;
   status?: string;
   flat?: boolean;
@@ -455,11 +456,24 @@ program
           process.exit(1);
         }
 
-        if (!quiet) console.log(`\n[info] Starting WireMock on port ${port}...`);
+        // Auto-increment port if unavailable (convert --serve always uses auto-port)
+        let effectivePort = port;
+        try {
+          effectivePort = await findAvailablePort(port);
+        } catch (portErr) {
+          console.error(`❌ ${portErr instanceof Error ? portErr.message : String(portErr)}`);
+          process.exit(1);
+        }
+
+        if (effectivePort !== port && !quiet) {
+          console.log(`⚠️  Port ${port} unavailable — using ${effectivePort} instead.`);
+        }
+
+        if (!quiet) console.log(`\n[info] Starting WireMock on port ${effectivePort}...`);
 
         const server = startServer({
           rootDir: merged.output,
-          port,
+          port: effectivePort,
           jarPath: merged.jar,
           verbose,
         });
@@ -499,6 +513,7 @@ program
   .option('-v, --verbose', 'Enable verbose logging')
   .option('-q, --quiet', 'Suppress all output except errors')
   .option('--no-logs', 'Disable session logging for this serve')
+  .option('--no-auto-port', 'Disable automatic port increment when port is unavailable')
   .action(async (target: string | undefined, options: ServeOptions) => {
     const verbose = options.quiet ? false : (options.verbose ?? false);
     const quiet = options.quiet ?? false;
@@ -522,6 +537,11 @@ program
         console.error(`❌ ${rangeErr instanceof Error ? rangeErr.message : String(rangeErr)}`);
         process.exit(1);
       }
+
+      // Resolve auto-port: CLI --no-auto-port > project config > global config > default (true)
+      const autoPort = options.autoPort === false ? false : resolveConfig<boolean>(
+        undefined, serveProjectCfg as Record<string, unknown>, 'auto-port', 'auto-port', true,
+      );
 
       // Determine the root directory to serve
       let dir: string;
@@ -625,18 +645,31 @@ program
       if (runForeground) {
         // Foreground mode: always verbose, start and block until exit
         const fgVerbose = true;
-        // Check port conflict
-        const portCheck = isPortOccupied(port);
-        if (portCheck.occupied && portCheck.entry) {
-          console.error(
-            `❌ Port ${port} is already in use (PID: ${portCheck.entry.pid}, stubs: ${portCheck.entry.rootDir})`,
-          );
-          process.exit(1);
+        // Resolve available port (auto-increment or hard-fail)
+        let effectivePort = port;
+        if (autoPort) {
+          try {
+            effectivePort = await findAvailablePort(port);
+          } catch (portErr) {
+            console.error(`❌ ${portErr instanceof Error ? portErr.message : String(portErr)}`);
+            process.exit(1);
+          }
+          if (effectivePort !== port && !quiet) {
+            console.log(`⚠️  Port ${port} unavailable — using ${effectivePort} instead.`);
+          }
+        } else {
+          const portCheck = isPortOccupied(port);
+          if (portCheck.occupied && portCheck.entry) {
+            console.error(
+              `❌ Port ${port} is already in use (PID: ${portCheck.entry.pid}, stubs: ${portCheck.entry.rootDir})`,
+            );
+            process.exit(1);
+          }
         }
 
         const server = startServer({
           rootDir: dir,
-          port,
+          port: effectivePort,
           // CLI --jar > project config jar > (resolveJarPath handles global config internally)
           jarPath: options.jar ?? serveProjectCfg.jar,
           verbose: fgVerbose,
@@ -653,13 +686,26 @@ program
 
       // Background mode (default): spawn detached and exit immediately
       {
-        // Check port conflict
-        const portCheck = isPortOccupied(port);
-        if (portCheck.occupied && portCheck.entry) {
-          console.error(
-            `❌ Port ${port} is already in use (PID: ${portCheck.entry.pid}, stubs: ${portCheck.entry.rootDir})`,
-          );
-          process.exit(1);
+        // Resolve available port (auto-increment or hard-fail)
+        let effectivePort = port;
+        if (autoPort) {
+          try {
+            effectivePort = await findAvailablePort(port);
+          } catch (portErr) {
+            console.error(`❌ ${portErr instanceof Error ? portErr.message : String(portErr)}`);
+            process.exit(1);
+          }
+          if (effectivePort !== port && !quiet) {
+            console.log(`⚠️  Port ${port} unavailable — using ${effectivePort} instead.`);
+          }
+        } else {
+          const portCheck = isPortOccupied(port);
+          if (portCheck.occupied && portCheck.entry) {
+            console.error(
+              `❌ Port ${port} is already in use (PID: ${portCheck.entry.pid}, stubs: ${portCheck.entry.rootDir})`,
+            );
+            process.exit(1);
+          }
         }
 
         // Resolve JAR path
@@ -677,22 +723,22 @@ program
           process.exit(1);
         }
 
-        const args = ['-jar', resolvedJar, '--port', String(port), '--root-dir', resolve(dir), '--verbose', 'true'];
+        const args = ['-jar', resolvedJar, '--port', String(effectivePort), '--root-dir', resolve(dir), '--verbose', 'true'];
 
         // Setup log file for background process (unless logging disabled)
         let logFilePath: string | undefined;
         if (!noLogs) {
           const logResult = openLogFileForBackground({
-            port,
+            port: effectivePort,
             rootDir: resolve(dir),
             logDir,
           });
           logFilePath = logResult.logFilePath;
         }
 
-        const pid = spawnBackground(javaCmd, args, { port, rootDir: resolve(dir), logFile: logFilePath });
+        const pid = spawnBackground(javaCmd, args, { port: effectivePort, rootDir: resolve(dir), logFile: logFilePath });
 
-        console.log(`✅ WireMock started on port ${port} (PID: ${pid})`);
+        console.log(`✅ WireMock started on port ${effectivePort} (PID: ${pid})`);
         if (!quiet && logFilePath) console.log(`   Log: ${logFilePath}`);
         process.exit(0);
       }
@@ -725,6 +771,7 @@ Global config keys (stored in ~/.swagger-to-wiremock/config.json):
   foreground <true|false> Run WireMock in foreground by default
   log-dir <path>          Directory for serve session log files
   no-logs <true|false>    Disable session logging entirely
+  auto-port <true|false>  Auto-increment port when unavailable (default: true)
 `;
 
 const CONFIG_HELP_LOCAL = `
