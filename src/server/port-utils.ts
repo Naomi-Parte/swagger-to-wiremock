@@ -7,7 +7,7 @@
  *   next available port when the requested port is busy.
  */
 
-import { createServer } from 'net';
+import { createServer, createConnection } from 'net';
 import { readConfig } from '../config/index.js';
 
 export interface PortRange {
@@ -53,29 +53,42 @@ export function validatePortRange(port: number): void {
 
 /**
  * Check if a port is available by attempting to bind a TCP server to it.
- * This detects OS-level port conflicts (not just stw-managed servers).
+ * Uses a dual strategy:
+ *   1. Try to connect to the port — if something accepts, the port is occupied.
+ *   2. If connection is refused, try to bind — if bind fails, the port is occupied.
+ * This reliably detects port conflicts on all platforms including Windows.
  *
  * @param port - Port number to check
  * @returns true if the port is free, false if occupied
  */
 export function isPortAvailable(port: number): Promise<boolean> {
   return new Promise((resolve) => {
-    const server = createServer();
+    const socket = createConnection({ port, host: '127.0.0.1' });
 
-    server.once('error', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
-        resolve(false);
-      } else {
-        // Unexpected error — treat as unavailable
-        resolve(false);
-      }
+    // If we can connect, something is listening — port is taken
+    socket.once('connect', () => {
+      socket.destroy();
+      resolve(false);
     });
 
-    server.once('listening', () => {
-      server.close(() => resolve(true));
+    // If connection is refused, try to bind to confirm it's truly free
+    socket.once('error', () => {
+      socket.destroy();
+      const server = createServer();
+      server.once('error', () => {
+        resolve(false);
+      });
+      server.once('listening', () => {
+        server.close(() => resolve(true));
+      });
+      server.listen(port, '0.0.0.0');
     });
 
-    server.listen(port, '127.0.0.1');
+    // Timeout: if neither connect nor error fires in 1s, treat as unavailable
+    socket.setTimeout(1000, () => {
+      socket.destroy();
+      resolve(false);
+    });
   });
 }
 

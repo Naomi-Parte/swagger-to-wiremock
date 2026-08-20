@@ -21,10 +21,10 @@ import { parseStatusFilter, filterByStatus } from './filters/status-filter.js';
 import { synthesisePlaceholderRecords, extractSpecificCodes } from './filters/placeholder-generator.js';
 import { startServer, resolveJarPath } from './server/index.js';
 import { openLogFileForBackground, listLogFiles } from './server/logger.js';
-import { isPortOccupied, spawnBackground, getServerStatus, stopServer, stopAllServers } from './server/process-manager.js';
+import { spawnBackground, getServerStatus, stopServer, stopAllServers } from './server/process-manager.js';
 import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
 import { loadProjectConfig, mergeWithCliOptions } from './config/project-config.js';
-import { validatePortRange, findAvailablePort } from './server/port-utils.js';
+import { validatePortRange, findAvailablePort, isPortAvailable } from './server/port-utils.js';
 import { initConfig } from './config/init.js';
 import { createStubServerDir } from './server/stub-server.js';
 import { writeLocalConfig, unsetLocalConfig } from './config/local-writer.js';
@@ -658,11 +658,9 @@ program
             console.log(`⚠️  Port ${port} unavailable — using ${effectivePort} instead.`);
           }
         } else {
-          const portCheck = isPortOccupied(port);
-          if (portCheck.occupied && portCheck.entry) {
-            console.error(
-              `❌ Port ${port} is already in use (PID: ${portCheck.entry.pid}, stubs: ${portCheck.entry.rootDir})`,
-            );
+          const available = await isPortAvailable(port);
+          if (!available) {
+            console.error(`❌ Port ${port} is already in use.`);
             process.exit(1);
           }
         }
@@ -699,11 +697,9 @@ program
             console.log(`⚠️  Port ${port} unavailable — using ${effectivePort} instead.`);
           }
         } else {
-          const portCheck = isPortOccupied(port);
-          if (portCheck.occupied && portCheck.entry) {
-            console.error(
-              `❌ Port ${port} is already in use (PID: ${portCheck.entry.pid}, stubs: ${portCheck.entry.rootDir})`,
-            );
+          const available = await isPortAvailable(port);
+          if (!available) {
+            console.error(`❌ Port ${port} is already in use.`);
             process.exit(1);
           }
         }
