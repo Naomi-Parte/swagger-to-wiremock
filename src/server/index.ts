@@ -17,6 +17,7 @@ export { resolveJarPath } from './jar-resolver.js';
 export { spawnBackground, getServerStatus, stopServer, stopAllServers, isPortOccupied } from './process-manager.js';
 export { validatePortRange, getPortRange, isPortAvailable, findAvailablePort } from './port-utils.js';
 export { SessionLogger, listLogFiles, resolveLogDir, openLogFileForBackground } from './logger.js';
+export { assertUnixPlatform, isLogrotateEnabled, enableLogrotate, disableLogrotate, getSystemConfigPath, generateConfig, writeSystemConfig } from './logrotate.js';
 
 /**
  * Detect if Java is available on the system.
@@ -176,6 +177,13 @@ export function startServer(options: ServerOptions): ServerProcess {
     logDir,
     jarPath: resolvedJar,
   });
+
+  // 6b. Register SIGHUP handler for log rotation (Unix only, foreground)
+  if (logger && process.platform !== 'win32') {
+    process.on('SIGHUP', () => {
+      logger.reopen();
+    });
+  }
 
   if (verbose) {
     console.log(`[server] Starting: ${javaCmd} ${args.join(' ')}`);

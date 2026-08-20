@@ -307,6 +307,56 @@ Re-enable:
 stw config set auto-port true
 ```
 
+### Logrotate (Linux/macOS)
+
+Integrate with the system `logrotate` for automatic log rotation, compression, and retention. **Unix only** — not available on Windows.
+
+```bash
+# Enable logrotate mode (switches to stable log filenames)
+stw logrotate --enable
+
+# Generate system logrotate config
+sudo stw logrotate --init
+# ✅ Written: /etc/logrotate.d/swagger-to-wiremock
+
+# Or use copytruncate strategy (simpler, no SIGHUP needed)
+sudo stw logrotate --init --copytruncate
+
+# Check status
+stw logrotate --status
+# Logrotate: enabled
+# Log naming: stable (stw-<port>.log)
+# System config: /etc/logrotate.d/swagger-to-wiremock
+
+# Disable (revert to timestamped filenames)
+stw logrotate --disable
+```
+
+**How it works:**
+
+| Mode | Log filename | Rotation |
+|------|-------------|----------|
+| Disabled (default) | `stw-8080-20260820-023119.log` | Manual (`stw logs --clear`) |
+| Enabled | `stw-8080.log` | Automatic via system logrotate |
+
+Two logrotate strategies are supported:
+
+- **postrotate + SIGHUP** (default) — logrotate renames the file, then sends SIGHUP to stw processes (PIDs from `servers.json`). Zero data loss.
+- **copytruncate** (`--copytruncate` flag) — logrotate copies then truncates in place. Simpler, no signal handling needed, but a theoretical microsecond of log loss.
+
+Foreground serve sessions (`-f`) handle SIGHUP automatically to reopen log files after rotation.
+
+```
+swagger-to-wiremock logrotate [options]
+
+Options:
+  --enable               Switch to stable log filenames (stw-<port>.log)
+  --disable              Switch back to timestamped filenames
+  --init                 Generate /etc/logrotate.d/swagger-to-wiremock config
+  --copytruncate         Use copytruncate strategy with --init
+  --status               Show logrotate integration status
+```
+
 ## Usage Examples
 
 ```bash

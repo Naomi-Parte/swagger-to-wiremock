@@ -29,6 +29,7 @@ export interface GlobalConfig {
   'no-logs'?: boolean;
   'auto-port'?: boolean;
   foreground?: boolean;
+  logrotate?: boolean;
 }
 
 /** All valid config keys */

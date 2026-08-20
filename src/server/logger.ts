@@ -7,6 +7,7 @@
 import { createWriteStream, mkdirSync, existsSync, readdirSync, statSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
 import { homedir } from 'os';
+import { isLogrotateEnabled } from './logrotate.js';
 import type { WriteStream } from 'fs';
 
 /**
@@ -18,6 +19,25 @@ export function generateLogFilename(port: number): string {
   const date = now.toISOString().slice(0, 10).replace(/-/g, '');
   const time = now.toISOString().slice(11, 19).replace(/:/g, '');
   return `stw-${port}-${date}-${time}.log`;
+}
+
+/**
+ * Generate the stable log filename for logrotate mode.
+ * Format: stw-<port>.log
+ */
+export function generateStableLogFilename(port: number): string {
+  return `stw-${port}.log`;
+}
+
+/**
+ * Get the appropriate log filename based on logrotate mode.
+ * - Logrotate enabled: stable filename (stw-<port>.log)
+ * - Logrotate disabled: timestamped filename (stw-<port>-<date>-<time>.log)
+ */
+export function getLogFilename(port: number): string {
+  return isLogrotateEnabled()
+    ? generateStableLogFilename(port)
+    : generateLogFilename(port);
 }
 
 /**
@@ -63,7 +83,7 @@ export class SessionLogger {
       mkdirSync(this._logDirPath, { recursive: true });
     }
 
-    const filename = generateLogFilename(port);
+    const filename = getLogFilename(port);
     this._logFilePath = join(this._logDirPath, filename);
 
     // Open write stream with autoClose and flush-on-write (no highWaterMark buffering)
@@ -138,6 +158,20 @@ export class SessionLogger {
     this.stream.write(`\n${separator}\nSession ended: ${new Date().toISOString()}\n${separator}\n`);
     this.stream.end();
   }
+
+  /**
+   * Reopen the log file (for SIGHUP-based logrotate).
+   * Closes the current stream and opens a new one at the same path.
+   */
+  reopen(): void {
+    this.stream.end();
+    this.stream = createWriteStream(this._logFilePath, {
+      flags: 'a',
+      encoding: 'utf8',
+      highWaterMark: 0,
+    });
+    this.stream.write(`[${new Date().toISOString()}] Log reopened (SIGHUP)\n`);
+  }
 }
 
 /**
@@ -178,7 +212,7 @@ export function openLogFileForBackground(options: {
     mkdirSync(resolvedLogDir, { recursive: true });
   }
 
-  const filename = generateLogFilename(port);
+  const filename = getLogFilename(port);
   const logFilePath = join(resolvedLogDir, filename);
 
   // Write a header to the log file before the process starts writing to it

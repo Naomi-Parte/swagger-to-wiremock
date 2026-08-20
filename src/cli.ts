@@ -22,6 +22,7 @@ import { synthesisePlaceholderRecords, extractSpecificCodes } from './filters/pl
 import { startServer, resolveJarPath } from './server/index.js';
 import { openLogFileForBackground, listLogFiles } from './server/logger.js';
 import { spawnBackground, getServerStatus, stopServer, stopAllServers } from './server/process-manager.js';
+import { isLogrotateEnabled, enableLogrotate, disableLogrotate, getSystemConfigPath, writeSystemConfig } from './server/logrotate.js';
 import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
 import { loadProjectConfig, mergeWithCliOptions } from './config/project-config.js';
 import { validatePortRange, findAvailablePort, isPortAvailable } from './server/port-utils.js';
@@ -29,7 +30,7 @@ import { initConfig } from './config/init.js';
 import { createStubServerDir } from './server/stub-server.js';
 import { writeLocalConfig, unsetLocalConfig } from './config/local-writer.js';
 
-const version = '1.1.0';
+const version = '1.2.0';
 
 const binName = (() => {
   const raw = basename(process.argv[1] || 'stw').replace(/\.(js|ts|mjs|cjs)$/, '');
@@ -1141,5 +1142,70 @@ function tailFile(filePath: string, lines: number): void {
   console.log(`─── ${filePath} (last ${lines} lines) ───`);
   console.log(tail);
 }
+
+// ─── logrotate subcommand ────────────────────────────────────────────────────
+
+program
+  .command('logrotate')
+  .description('Manage logrotate integration (Linux/macOS only)')
+  .option('--enable', 'Enable logrotate mode (stable log filenames)')
+  .option('--disable', 'Disable logrotate mode (timestamped log filenames)')
+  .option('--init', 'Generate system logrotate config (/etc/logrotate.d/)')
+  .option('--copytruncate', 'Use copytruncate strategy instead of postrotate+SIGHUP (with --init)')
+  .option('--status', 'Show logrotate integration status')
+  .action((options: { enable?: boolean; disable?: boolean; init?: boolean; copytruncate?: boolean; status?: boolean }) => {
+    // Platform gate
+    if (process.platform === 'win32') {
+      console.error('❌ stw logrotate is only available on Linux/macOS.');
+      console.error('   On Windows, use: stw logs --clear');
+      process.exit(1);
+    }
+
+    if (options.enable) {
+      enableLogrotate();
+      console.log('✅ Logrotate mode enabled. Logs will write to stable paths (stw-<port>.log).');
+      console.log('   Run `stw logrotate --init` to generate the system logrotate config.');
+      return;
+    }
+
+    if (options.disable) {
+      disableLogrotate();
+      console.log('✅ Logrotate mode disabled. Logs will use timestamped filenames.');
+      return;
+    }
+
+    if (options.init) {
+      const result = writeSystemConfig({ copytruncate: options.copytruncate });
+      if (result.written) {
+        console.log(`✅ Written: ${result.path}`);
+        console.log(`   Strategy: ${options.copytruncate ? 'copytruncate' : 'postrotate + SIGHUP'}`);
+      } else {
+        console.log(`⚠️  Permission denied writing to ${result.path}`);
+        console.log('   Run with sudo, or copy the following to that path:\n');
+        console.log(result.content);
+      }
+      return;
+    }
+
+    if (options.status) {
+      const enabled = isLogrotateEnabled();
+      const systemConfig = getSystemConfigPath();
+      const hasConfig = existsSync(systemConfig);
+      console.log(`Logrotate: ${enabled ? 'enabled' : 'disabled'}`);
+      console.log(`Log naming: ${enabled ? 'stable (stw-<port>.log)' : 'timestamped (stw-<port>-<date>-<time>.log)'}`);
+      console.log(`System config: ${hasConfig ? systemConfig : `not found (${systemConfig})`}`);
+      return;
+    }
+
+    // No flag provided — show help
+    console.log('Usage:');
+    console.log('  stw logrotate --enable       Enable logrotate mode (stable log filenames)');
+    console.log('  stw logrotate --disable      Disable logrotate mode (timestamped filenames)');
+    console.log('  stw logrotate --init         Generate system logrotate config');
+    console.log('  stw logrotate --status       Show current status');
+    console.log('');
+    console.log('Options for --init:');
+    console.log('  --copytruncate               Use copytruncate strategy (simpler, tiny risk of log loss)');
+  });
 
 program.parseAsync();
