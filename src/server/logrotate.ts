@@ -7,8 +7,8 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { homedir, userInfo } from 'os';
-import { getConfigDir, getConfigPath, readConfig } from '../config/index.js';
+import { userInfo } from 'os';
+import { getConfigDir, getConfigPath, getDefaultLogDir, readConfig } from '../config/index.js';
 
 // ─── Platform Gate ───────────────────────────────────────────────────────────
 
@@ -88,7 +88,7 @@ export interface LogrotateInitOptions {
  */
 export function generateConfig(options: LogrotateInitOptions = {}): string {
   const config = readConfig();
-  const defaultLogDir = config['log-dir'] ?? join(homedir(), '.swagger-to-wiremock', 'logs');
+  const defaultLogDir = config['log-dir'] ?? getDefaultLogDir();
   const logDir = options.logDir ?? defaultLogDir;
   const logGlob = join(logDir, 'stw-*.log');
   const registryPath = join(getConfigDir(), 'servers.json');

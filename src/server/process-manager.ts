@@ -2,19 +2,18 @@
  * @file Background process manager
  * @description Manages background WireMock server processes — spawning detached,
  *   tracking PIDs in a registry file, health checking, and stopping servers.
- *
- * Registry file: ~/.swagger-to-wiremock/servers.json  
  */
 
 import { spawn, execSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, openSync } from 'fs';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
-import { homedir } from 'os';
+import { getConfigDir } from '../config/index.js';
 import type { ServerRegistryEntry } from './types.js';
 
-const CONFIG_DIR = join(homedir(), '.swagger-to-wiremock');
-const REGISTRY_FILE = join(CONFIG_DIR, 'servers.json');
+function getRegistryFile(): string {
+  return join(getConfigDir(), 'servers.json');
+}
 
 // ─── Registry I/O ────────────────────────────────────────────────────────────
 
@@ -23,12 +22,12 @@ const REGISTRY_FILE = join(CONFIG_DIR, 'servers.json');
  * Returns an empty array if the file doesn't exist or is malformed.
  */
 export function readRegistry(): ServerRegistryEntry[] {
-  if (!existsSync(REGISTRY_FILE)) {
+  if (!existsSync(getRegistryFile())) {
     return [];
   }
 
   try {
-    const content = readFileSync(REGISTRY_FILE, 'utf8');
+    const content = readFileSync(getRegistryFile(), 'utf8');
     const parsed = JSON.parse(content);
 
     if (!Array.isArray(parsed)) return [];
@@ -43,11 +42,12 @@ export function readRegistry(): ServerRegistryEntry[] {
  * Creates the config directory if it doesn't exist.
  */
 export function writeRegistry(entries: ServerRegistryEntry[]): void {
-  if (!existsSync(CONFIG_DIR)) {
-    mkdirSync(CONFIG_DIR, { recursive: true });
+  const configDir = getConfigDir();
+  if (!existsSync(configDir)) {
+    mkdirSync(configDir, { recursive: true });
   }
 
-  writeFileSync(REGISTRY_FILE, JSON.stringify(entries, null, 2) + '\n', 'utf8');
+  writeFileSync(getRegistryFile(), JSON.stringify(entries, null, 2) + '\n', 'utf8');
 }
 
 // ─── Process utilities ───────────────────────────────────────────────────────

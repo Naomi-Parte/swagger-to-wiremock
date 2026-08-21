@@ -6,7 +6,7 @@
 
 import { createWriteStream, mkdirSync, existsSync, readdirSync, statSync, writeFileSync } from 'fs';
 import { join, resolve } from 'path';
-import { homedir } from 'os';
+import { getDefaultLogDir } from '../config/index.js';
 import { isLogrotateEnabled } from './logrotate.js';
 import type { WriteStream } from 'fs';
 
@@ -48,7 +48,7 @@ export function resolveLogDir(logDir: string | undefined): string {
   if (logDir) {
     return resolve(logDir);
   }
-  return join(homedir(), '.swagger-to-wiremock', 'logs');
+  return getDefaultLogDir();
 }
 
 export interface SessionLoggerOptions {

@@ -23,14 +23,14 @@ import { startServer, resolveJarPath } from './server/index.js';
 import { openLogFileForBackground, listLogFiles } from './server/logger.js';
 import { spawnBackground, spawnWithForwarder, getServerStatus, stopServer, stopAllServers } from './server/process-manager.js';
 import { isLogrotateEnabled, enableLogrotate, disableLogrotate, writeLogrotateConfig } from './server/logrotate.js';
-import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
+import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys, getDefaultLogDir, getHome } from './config/index.js';
 import { loadProjectConfig, mergeWithCliOptions } from './config/project-config.js';
 import { validatePortRange, findAvailablePort, isPortAvailable } from './server/port-utils.js';
 import { initConfig } from './config/init.js';
 import { createStubServerDir } from './server/stub-server.js';
 import { writeLocalConfig, unsetLocalConfig } from './config/local-writer.js';
 
-const version = '1.2.0';
+const version = '1.3.0';
 
 const binName = (() => {
   const raw = basename(process.argv[1] || 'stw').replace(/\.(js|ts|mjs|cjs)$/, '');
@@ -768,7 +768,7 @@ Usage:
   stw config set <key> <value>       Set global config
   stw config set -l <key> <value>    Set local project config (.stwrc.yaml)
 
-Global config keys (stored in ~/.swagger-to-wiremock/config.json):
+Global config keys (stored in <STW_HOME>/config.json):
 
   jar <path>              Path to WireMock standalone JAR (e.g. ./wiremock.jar)
   port <number>           Default WireMock port (e.g. 8080)
@@ -797,7 +797,7 @@ Local config keys (stored in .stwrc.yaml in project root):
   foreground <true|false> Run WireMock in foreground by default
   verbose <true|false>    Enable verbose logging
   quiet <true|false>      Suppress all output except errors
-  log-dir <path>          Directory for serve session log files (default: ~/.swagger-to-wiremock/logs/)
+  log-dir <path>          Directory for serve session log files (default: <STW_HOME>/logs/)
   no-logs <true|false>    Disable session logging entirely
   templated <true|false>  Use WireMock response templating
   dry-run <true|false>    Show what would be generated without writing
@@ -917,7 +917,7 @@ configCmd
 
       if (entries.length === 0) {
         console.log('No global config set.');
-        console.log('Config file: ~/.swagger-to-wiremock/config.json');
+        console.log(`Config file: ${getHome()}/config.json`);
         return;
       }
 
@@ -1097,8 +1097,8 @@ program
       }
     }
 
-    // Resolve log directory: config > default (~/.swagger-to-wiremock/logs/)
-    const logDirPath = configuredLogDir ?? join(homedir(), '.swagger-to-wiremock', 'logs');
+    // Resolve log directory: config > default (<STW_HOME>/logs/)
+    const logDirPath = configuredLogDir ?? getDefaultLogDir();
 
     if (options.clear) {
       if (!existsSync(logDirPath)) {

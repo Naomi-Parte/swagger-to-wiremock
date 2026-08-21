@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2026-08-21
+
+### Added
+
+- **`STW_HOME` environment variable** — Allows overriding the stw home directory (default: `~/.swagger-to-wiremock`). All data — config, logs, server registry — resolves from this path. Set `export STW_HOME=/opt/stw` to relocate. Useful on shared servers or when dot-directories are undesirable.
+
+---
+
 ## [1.2.0] - 2026-08-20
 
 ### Added

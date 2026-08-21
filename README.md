@@ -192,6 +192,31 @@ swagger-to-wiremock serve [target] [options]
 > **Tip:** The binary is also available as `stw` — a short alias that works
 > identically to `swagger-to-wiremock`. Use `stw convert`, `stw serve`, etc.
 
+## `STW_HOME` — Custom Home Directory
+
+By default, all stw data lives in `~/.swagger-to-wiremock/` (config, logs, server registry). Override with the `STW_HOME` environment variable:
+
+```bash
+export STW_HOME=/opt/stw
+stw serve --stub 200 --port 8080
+# Config: /opt/stw/config.json
+# Logs:   /opt/stw/logs/stw-8080.log
+# Registry: /opt/stw/servers.json
+```
+
+Set it in your shell profile (`.bashrc`, `.zshrc`, etc.) for persistence:
+
+```bash
+echo 'export STW_HOME=/opt/stw' >> ~/.bashrc
+```
+
+| `STW_HOME` set? | Home directory |
+|-----------------|----------------|
+| No (default) | `~/.swagger-to-wiremock/` |
+| Yes | Value of `STW_HOME` |
+
+The directory is created automatically on first use.
+
 ## Project Configuration
 
 Teams can commit a `.stwrc.yaml` file to the repo so everyone uses the same defaults — no CLI flags needed.

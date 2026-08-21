@@ -1,6 +1,7 @@
 /**
  * @file Global configuration manager
- * @description Reads and writes user-level configuration stored at ~/.swagger-to-wiremock/config.json.
+ * @description Reads and writes user-level configuration stored in the stw home directory.
+ *   Home directory resolution: STW_HOME env var > ~/.swagger-to-wiremock
  *   This provides persistent settings (like JAR path) so users don't need to pass flags every time.
  *
  * Supported keys:
@@ -44,17 +45,32 @@ export function resolveToAbsolute(p: string): string {
 }
 
 /**
- * Get the path to the global config directory (~/.swagger-to-wiremock/)
+ * Get the stw home directory.
+ * Resolution: STW_HOME env var > ~/.swagger-to-wiremock
  */
-export function getConfigDir(): string {
-  return join(homedir(), '.swagger-to-wiremock');
+export function getHome(): string {
+  return process.env['STW_HOME'] ?? join(homedir(), '.swagger-to-wiremock');
 }
 
 /**
- * Get the path to the global config file (~/.swagger-to-wiremock/config.json)
+ * Get the path to the global config directory (same as home).
+ */
+export function getConfigDir(): string {
+  return getHome();
+}
+
+/**
+ * Get the path to the global config file (<home>/config.json)
  */
 export function getConfigPath(): string {
   return join(getConfigDir(), 'config.json');
+}
+
+/**
+ * Get the default log directory (<home>/logs/)
+ */
+export function getDefaultLogDir(): string {
+  return join(getHome(), 'logs');
 }
 
 /**
