@@ -1072,7 +1072,8 @@ program
   .option('-t, --tail', 'Tail the latest (or port-specific) log file')
   .option('-n, --lines <count>', 'Number of lines to show when tailing (default: 50)', '50')
   .option('--clear', 'Delete all log files in the log directory')
-  .action((options: { port?: string; tail?: boolean; lines?: string; clear?: boolean }) => {
+  .option('-y, --yes', 'Skip confirmation prompt')
+  .action(async (options: { port?: string; tail?: boolean; lines?: string; clear?: boolean; yes?: boolean }) => {
     const { config: logsProjectCfg } = loadProjectConfig();
 
     // Resolve explicitly configured log directory (if set in config)
@@ -1109,6 +1110,15 @@ program
         console.log('No log files found.');
         return;
       }
+
+      if (!options.yes) {
+        const confirmed = await confirmPrompt(`Delete ${files.length} log file${files.length > 1 ? 's' : ''}?`);
+        if (!confirmed) {
+          console.log('Aborted.');
+          return;
+        }
+      }
+
       for (const file of files) {
         rmSync(file.path);
       }
@@ -1166,7 +1176,7 @@ program
     // Platform gate
     if (process.platform === 'win32') {
       console.error('❌ stw logrotate is only available on Linux/macOS.');
-      console.error('   On Windows, use: stw logs --clear');
+      console.error('   On Windows, manage log rotation manually or use: stw logs --clear to remove old logs.');
       process.exit(1);
     }
 
