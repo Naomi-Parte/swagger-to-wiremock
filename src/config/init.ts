@@ -1,5 +1,5 @@
 /**
- * @file `stw init` — scaffold a .stwrc.yaml with all available options documented
+ * @file `stw config init` — scaffold a .stwrc.yaml with all available options documented
  * @description Generates a fully-commented .stwrc.yaml in the current directory,
  *   making it easy for teams to discover and configure all project-level options.
  */

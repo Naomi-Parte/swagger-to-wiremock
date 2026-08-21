@@ -223,7 +223,7 @@ Teams can commit a `.stwrc.yaml` file to the repo so everyone uses the same defa
 
 ```bash
 # Scaffold a fully-documented config file
-stw init
+stw config init
 ```
 
 This creates a `.stwrc.yaml` with all available options commented out and documented. Uncomment the ones you want:
@@ -434,7 +434,7 @@ stw logs --tail
 stw logs --port 8080 --tail
 
 # Initialize project config
-stw init
+stw config init
 ```
 
 ## Features

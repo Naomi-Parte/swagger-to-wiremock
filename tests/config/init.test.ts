@@ -1,5 +1,5 @@
 /**
- * @file Tests for `stw init` — scaffold a .stwrc.yaml with documented options
+ * @file Tests for `stw config init` — scaffold a .stwrc.yaml with documented options
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';

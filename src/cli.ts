@@ -903,7 +903,7 @@ configCmd
       const entries = Object.entries(projectConfig);
       if (entries.length === 0) {
         console.log('No local project config found.');
-        console.log('Run "stw init" to create a .stwrc.yaml, or use "stw config set -l <key> <value>".');
+        console.log('Run "stw config init" to create a .stwrc.yaml, or use "stw config set -l <key> <value>".');
         return;
       }
       console.log(`Local config${source ? ` (${source})` : ''}:`);
@@ -927,12 +927,10 @@ configCmd
     }
   });
 
+configCmd
+  .command('init')
 // ─── status subcommand ───────────────────────────────────────────────────────
 
-// ─── init subcommand ─────────────────────────────────────────────────────────
-
-program
-  .command('init')
   .description('Generate a .stwrc.yaml config file with all options documented')
   .option('-f, --force', 'Overwrite existing config file')
   .action((options: { force?: boolean }) => {
