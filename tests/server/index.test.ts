@@ -15,6 +15,7 @@ function createTmpDir(): string {
 describe('server', () => {
   let tmpDir: string;
   const originalEnv = process.env['WIREMOCK_JAR'];
+  const originalStwHome = process.env['STW_HOME'];
   const originalHome = process.env['HOME'];
   const originalUserProfile = process.env['USERPROFILE'];
   const originalHomeDrive = process.env['HOMEDRIVE'];
@@ -23,6 +24,8 @@ describe('server', () => {
   beforeEach(() => {
     tmpDir = createTmpDir();
     delete process.env['WIREMOCK_JAR'];
+    // Redirect STW_HOME so global config doesn't interfere
+    process.env['STW_HOME'] = join(tmpDir, '.swagger-to-wiremock');
     // Redirect HOME so global config doesn't interfere with tests
     process.env['HOME'] = tmpDir;
     process.env['USERPROFILE'] = tmpDir;
@@ -33,6 +36,11 @@ describe('server', () => {
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
     // Restore HOME
+    if (originalStwHome !== undefined) {
+      process.env['STW_HOME'] = originalStwHome;
+    } else {
+      delete process.env['STW_HOME'];
+    }
     process.env['HOME'] = originalHome;
     process.env['USERPROFILE'] = originalUserProfile;
     process.env['HOMEDRIVE'] = originalHomeDrive;

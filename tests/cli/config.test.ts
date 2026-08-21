@@ -42,6 +42,7 @@ function runCli(args: string[]): RunResult {
       timeout: 10000,
       env: {
         ...process.env,
+        STW_HOME: join(tmpHome, '.swagger-to-wiremock'),
         HOME: tmpHome,
         USERPROFILE: tmpHome,
         HOMEDRIVE: tmpHome.slice(0, 2),  // e.g. 'C:'

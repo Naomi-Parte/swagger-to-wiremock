@@ -2,18 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.3.0] - 2026-08-21
+## [1.2.0] - 2026-08-21
 
 ### Added
 
 - **`STW_HOME` environment variable** — Allows overriding the stw home directory (default: `~/.swagger-to-wiremock`). All data — config, logs, server registry — resolves from this path. Set `export STW_HOME=/opt/stw` to relocate. Useful on shared servers or when dot-directories are undesirable.
-
----
-
-## [1.2.0] - 2026-08-20
-
-### Added
-
 - **Logrotate integration (Linux/macOS)** — New `stw logrotate` subcommand for system logrotate integration. `--enable` switches to stable log filenames (`stw-<port>.log`) compatible with logrotate. `--disable` reverts to timestamped filenames. `--init` generates a ready-to-use `/etc/logrotate.d/swagger-to-wiremock` config (supports `--copytruncate` or postrotate+SIGHUP strategy using existing `servers.json` PIDs). `--status` shows current state.
 - **SIGHUP log reopen** — Foreground serve sessions handle SIGHUP to reopen log files after rotation (Unix only). Enables zero-loss postrotate logrotate strategy.
 - **`SessionLogger.reopen()`** — New method for signal-driven log file rotation.

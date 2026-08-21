@@ -35,8 +35,11 @@ import {
 describe('global config', () => {
   /** Path to a real (empty) .jar file for tests that call setConfig('jar', ...) */
   let fakeJar: string;
+  let originalStwHome: string | undefined;
 
   beforeEach(() => {
+    originalStwHome = process.env['STW_HOME'];
+    delete process.env['STW_HOME'];
     mockHomeDir = join(tmpdir(), `stw-config-test-${randomBytes(4).toString('hex')}`);
     mkdirSync(mockHomeDir, { recursive: true });
     // Create a real .jar file so setConfig('jar') validation passes
@@ -45,6 +48,11 @@ describe('global config', () => {
   });
 
   afterEach(() => {
+    if (originalStwHome !== undefined) {
+      process.env['STW_HOME'] = originalStwHome;
+    } else {
+      delete process.env['STW_HOME'];
+    }
     rmSync(mockHomeDir, { recursive: true, force: true });
   });
 
