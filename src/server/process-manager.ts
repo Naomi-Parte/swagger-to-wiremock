@@ -238,6 +238,7 @@ export function spawnBackground(
   const child = spawn(javaCmd, args, {
     detached: true,
     stdio,
+    windowsHide: true,
   });
 
   // Unref so the parent can exit without waiting for the child
@@ -303,6 +304,7 @@ export function spawnWithForwarder(
   const child = spawn('node', forwarderArgs, {
     detached: true,
     stdio: ['ignore', 'ignore', 'ignore'],
+    windowsHide: true,
   });
 
   child.unref();

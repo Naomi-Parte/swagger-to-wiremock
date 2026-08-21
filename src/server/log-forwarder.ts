@@ -76,6 +76,7 @@ writeLog([
 
 const child = spawn(javaCmd, wmArgs, {
   stdio: ['ignore', 'pipe', 'pipe'],
+  windowsHide: true,
 });
 
 if (child.stdout) {

@@ -7,6 +7,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
+import { execSync } from 'child_process';
 import { userInfo } from 'os';
 import { getConfigDir, getConfigPath, getDefaultLogDir, readConfig } from '../config/index.js';
 
@@ -98,10 +99,13 @@ export function generateConfig(options: LogrotateInitOptions = {}): string {
   try {
     const info = userInfo();
     user = info.username;
-    group = info.username;
+    // Get actual primary group name (not just username repeated)
+    group = execSync('id -gn', { encoding: 'utf8' }).trim();
   } catch {
-    user = 'root';
-    group = 'root';
+    try {
+      user = userInfo().username;
+    } catch { user = 'root'; }
+    group = user;
   }
 
   const lines = [
