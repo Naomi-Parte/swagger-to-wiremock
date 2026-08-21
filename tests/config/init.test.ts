@@ -50,7 +50,7 @@ describe('initConfig', () => {
     const content = readFileSync(join(testDir, '.stwrc.yaml'), 'utf8');
 
     // All options should appear (commented out)
-    expect(content).toContain('# output:');
+    expect(content).toContain('# output-dir:');
     expect(content).toContain('# flat:');
     expect(content).toContain('# seed:');
     expect(content).toContain('# status:');
@@ -88,7 +88,7 @@ describe('initConfig', () => {
   });
 
   it('should not overwrite an existing .stwrc.json without --force', () => {
-    writeFileSync(join(testDir, '.stwrc.json'), '{"output": "./existing"}', 'utf8');
+    writeFileSync(join(testDir, '.stwrc.json'), '{"output-dir": "./existing"}', 'utf8');
 
     const result = initConfig({ cwd: testDir });
 
@@ -97,7 +97,7 @@ describe('initConfig', () => {
   });
 
   it('should overwrite existing config when --force is set', () => {
-    writeFileSync(join(testDir, '.stwrc.yaml'), 'output: ./old\n', 'utf8');
+    writeFileSync(join(testDir, '.stwrc.yaml'), 'output-dir: ./old\n', 'utf8');
 
     const result = initConfig({ cwd: testDir, force: true });
 

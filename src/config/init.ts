@@ -19,9 +19,6 @@ const TEMPLATE = `# swagger-to-wiremock project configuration
 
 # ─── Output ───────────────────────────────────────────────────────────────────
 
-# Output directory for generated WireMock stubs
-# output: ./wiremock
-
 # Parent directory for all generated stubs (spec name becomes a subfolder)
 # e.g. output-dir: ./wiremock → stw convert petstore.yaml → ./wiremock/petstore/
 # output-dir: ./wiremock

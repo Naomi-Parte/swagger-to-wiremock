@@ -21,7 +21,6 @@ import yaml from 'js-yaml';
  * All values are optional; only present keys override defaults.
  */
 export interface ProjectConfig {
-  output?: string;
   seed?: number;
   'no-seed'?: boolean;
   flat?: boolean;
@@ -164,7 +163,6 @@ export function mergeWithCliOptions(
 
   // Map project config keys (kebab-case) to CLI option keys (camelCase)
   const keyMap: Record<string, string> = {
-    output: 'output',
     seed: 'seed',
     'no-seed': 'seed', // no-seed: true in config → seed: false in CLI
     flat: 'flat',

@@ -784,7 +784,6 @@ Global config keys (stored in <STW_HOME>/config.json):
 const CONFIG_HELP_LOCAL = `
 Local config keys (stored in .stwrc.yaml in project root):
 
-  output <path>           Output directory for this project
   output-dir <path>       Parent directory for generated stubs
   seed <number>           Seed for deterministic response generation
   flat <true|false>       Single folder output (no status-class split)

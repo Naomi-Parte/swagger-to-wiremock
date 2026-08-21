@@ -32,25 +32,25 @@ describe('project-config', () => {
     });
 
     it('should load .stwrc.yaml', () => {
-      const configContent = `output: ./wiremock-stubs\nseed: 42\nflat: true\n`;
+      const configContent = `output-dir: ./wiremock-stubs\nseed: 42\nflat: true\n`;
       writeFileSync(join(testDir, '.stwrc.yaml'), configContent, 'utf8');
 
       const result = loadProjectConfig(testDir);
-      expect(result.config).toEqual({ output: './wiremock-stubs', seed: 42, flat: true });
+      expect(result.config).toEqual({ 'output-dir': './wiremock-stubs', seed: 42, flat: true });
       expect(result.source).toBe(join(testDir, '.stwrc.yaml'));
     });
 
     it('should load .stwrc.yml', () => {
-      const configContent = `output: ./stubs\nport: 9090\n`;
+      const configContent = `output-dir: ./stubs\nport: 9090\n`;
       writeFileSync(join(testDir, '.stwrc.yml'), configContent, 'utf8');
 
       const result = loadProjectConfig(testDir);
-      expect(result.config).toEqual({ output: './stubs', port: 9090 });
+      expect(result.config).toEqual({ 'output-dir': './stubs', port: 9090 });
       expect(result.source).toBe(join(testDir, '.stwrc.yml'));
     });
 
     it('should load .stwrc.json', () => {
-      const config = { output: './json-stubs', seed: 99, 'no-security': true };
+      const config = { 'output-dir': './json-stubs', seed: 99, 'no-security': true };
       writeFileSync(join(testDir, '.stwrc.json'), JSON.stringify(config), 'utf8');
 
       const result = loadProjectConfig(testDir);
@@ -59,45 +59,45 @@ describe('project-config', () => {
     });
 
     it('should prefer .stwrc.yaml over .stwrc.yml', () => {
-      writeFileSync(join(testDir, '.stwrc.yaml'), 'output: ./from-yaml\n', 'utf8');
-      writeFileSync(join(testDir, '.stwrc.yml'), 'output: ./from-yml\n', 'utf8');
+      writeFileSync(join(testDir, '.stwrc.yaml'), 'output-dir: ./from-yaml\n', 'utf8');
+      writeFileSync(join(testDir, '.stwrc.yml'), 'output-dir: ./from-yml\n', 'utf8');
 
       const result = loadProjectConfig(testDir);
-      expect(result.config.output).toBe('./from-yaml');
+      expect(result.config['output-dir']).toBe('./from-yaml');
       expect(result.source).toBe(join(testDir, '.stwrc.yaml'));
     });
 
     it('should prefer .stwrc.yml over .stwrc.json', () => {
-      writeFileSync(join(testDir, '.stwrc.yml'), 'output: ./from-yml\n', 'utf8');
-      writeFileSync(join(testDir, '.stwrc.json'), JSON.stringify({ output: './from-json' }), 'utf8');
+      writeFileSync(join(testDir, '.stwrc.yml'), 'output-dir: ./from-yml\n', 'utf8');
+      writeFileSync(join(testDir, '.stwrc.json'), JSON.stringify({ 'output-dir': './from-json' }), 'utf8');
 
       const result = loadProjectConfig(testDir);
-      expect(result.config.output).toBe('./from-yml');
+      expect(result.config['output-dir']).toBe('./from-yml');
     });
 
     it('should load from package.json "swagger-to-wiremock" key', () => {
       const pkg = {
         name: 'my-project',
         version: '1.0.0',
-        'swagger-to-wiremock': { output: './pkg-stubs', flat: true },
+        'swagger-to-wiremock': { 'output-dir': './pkg-stubs', flat: true },
       };
       writeFileSync(join(testDir, 'package.json'), JSON.stringify(pkg), 'utf8');
 
       const result = loadProjectConfig(testDir);
-      expect(result.config).toEqual({ output: './pkg-stubs', flat: true });
+      expect(result.config).toEqual({ 'output-dir': './pkg-stubs', flat: true });
       expect(result.source).toBe(join(testDir, 'package.json'));
     });
 
     it('should prefer rc file over package.json', () => {
-      writeFileSync(join(testDir, '.stwrc.yaml'), 'output: ./from-rc\n', 'utf8');
+      writeFileSync(join(testDir, '.stwrc.yaml'), 'output-dir: ./from-rc\n', 'utf8');
       const pkg = {
         name: 'my-project',
-        'swagger-to-wiremock': { output: './from-pkg' },
+        'swagger-to-wiremock': { 'output-dir': './from-pkg' },
       };
       writeFileSync(join(testDir, 'package.json'), JSON.stringify(pkg), 'utf8');
 
       const result = loadProjectConfig(testDir);
-      expect(result.config.output).toBe('./from-rc');
+      expect(result.config['output-dir']).toBe('./from-rc');
     });
 
     it('should ignore package.json without swagger-to-wiremock key', () => {
@@ -130,16 +130,16 @@ describe('project-config', () => {
       mkdirSync(childDir, { recursive: true });
 
       // Put config in testDir (ancestor directory)
-      writeFileSync(join(testDir, '.stwrc.yaml'), 'output: ./from-parent\n', 'utf8');
+      writeFileSync(join(testDir, '.stwrc.yaml'), 'output-dir: ./from-parent\n', 'utf8');
 
       const result = loadProjectConfig(childDir);
-      expect(result.config.output).toBe('./from-parent');
+      expect(result.config['output-dir']).toBe('./from-parent');
       expect(result.source).toBe(join(testDir, '.stwrc.yaml'));
     });
 
     it('should support all option keys in YAML', () => {
       const configContent = [
-        'output: ./all-opts',
+        'output-dir: ./all-opts',
         'seed: 123',
         'flat: true',
         'status: 2xx,4xx',
@@ -155,7 +155,7 @@ describe('project-config', () => {
 
       const result = loadProjectConfig(testDir);
       expect(result.config).toEqual({
-        output: './all-opts',
+        'output-dir': './all-opts',
         seed: 123,
         flat: true,
         status: '2xx,4xx',
@@ -173,6 +173,7 @@ describe('project-config', () => {
   describe('mergeWithCliOptions', () => {
     const defaults: Record<string, unknown> = {
       output: './wiremock',
+      outputDir: undefined,
       seed: undefined,
       verbose: undefined,
       quiet: undefined,
@@ -188,23 +189,23 @@ describe('project-config', () => {
     };
 
     it('should apply project config when CLI uses defaults', () => {
-      const projectConfig: ProjectConfig = { output: './custom-stubs', seed: 99, flat: true };
+      const projectConfig: ProjectConfig = { 'output-dir': './custom-stubs', seed: 99, flat: true };
       const cliOptions = { ...defaults };
 
       const merged = mergeWithCliOptions(projectConfig, cliOptions, defaults);
 
-      expect(merged.output).toBe('./custom-stubs');
+      expect(merged.outputDir).toBe('./custom-stubs');
       expect(merged.seed).toBe('99');
       expect(merged.flat).toBe(true);
     });
 
     it('should let CLI flags override project config', () => {
-      const projectConfig: ProjectConfig = { output: './from-config', seed: 42 };
-      const cliOptions = { ...defaults, output: './from-cli', seed: '77' };
+      const projectConfig: ProjectConfig = { 'output-dir': './from-config', seed: 42 };
+      const cliOptions = { ...defaults, outputDir: './from-cli', seed: '77' };
 
       const merged = mergeWithCliOptions(projectConfig, cliOptions, defaults);
 
-      expect(merged.output).toBe('./from-cli');
+      expect(merged.outputDir).toBe('./from-cli');
       expect(merged.seed).toBe('77');
     });
 
@@ -237,7 +238,7 @@ describe('project-config', () => {
     });
 
     it('should not touch options that have no project config equivalent', () => {
-      const projectConfig: ProjectConfig = { output: './stubs' };
+      const projectConfig: ProjectConfig = { 'output-dir': './stubs' };
       const cliOptions = { ...defaults, clean: true };
 
       const merged = mergeWithCliOptions(projectConfig, cliOptions, defaults);
