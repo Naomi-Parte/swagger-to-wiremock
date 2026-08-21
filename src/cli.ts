@@ -21,8 +21,8 @@ import { parseStatusFilter, filterByStatus } from './filters/status-filter.js';
 import { synthesisePlaceholderRecords, extractSpecificCodes } from './filters/placeholder-generator.js';
 import { startServer, resolveJarPath } from './server/index.js';
 import { openLogFileForBackground, listLogFiles } from './server/logger.js';
-import { spawnBackground, getServerStatus, stopServer, stopAllServers } from './server/process-manager.js';
-import { isLogrotateEnabled, enableLogrotate, disableLogrotate, getSystemConfigPath, writeSystemConfig } from './server/logrotate.js';
+import { spawnBackground, spawnWithForwarder, getServerStatus, stopServer, stopAllServers } from './server/process-manager.js';
+import { isLogrotateEnabled, enableLogrotate, disableLogrotate, writeLogrotateConfig } from './server/logrotate.js';
 import { setConfig, getConfig, unsetConfig, listConfig, isValidKey, getValidKeys } from './config/index.js';
 import { loadProjectConfig, mergeWithCliOptions } from './config/project-config.js';
 import { validatePortRange, findAvailablePort, isPortAvailable } from './server/port-utils.js';
@@ -733,7 +733,17 @@ program
           logFilePath = logResult.logFilePath;
         }
 
-        const pid = spawnBackground(javaCmd, args, { port: effectivePort, rootDir: resolve(dir), logFile: logFilePath });
+        // Use log-forwarder when logrotate is enabled (handles SIGHUP for log rotation)
+        let pid: number;
+        if (logFilePath && isLogrotateEnabled()) {
+          pid = spawnWithForwarder(javaCmd, args, {
+            port: effectivePort,
+            rootDir: resolve(dir),
+            logFile: logFilePath,
+          });
+        } else {
+          pid = spawnBackground(javaCmd, args, { port: effectivePort, rootDir: resolve(dir), logFile: logFilePath });
+        }
 
         console.log(`✅ WireMock started on port ${effectivePort} (PID: ${pid})`);
         if (!quiet && logFilePath) console.log(`   Log: ${logFilePath}`);
@@ -1175,25 +1185,19 @@ program
     }
 
     if (options.init) {
-      const result = writeSystemConfig({ copytruncate: options.copytruncate });
-      if (result.written) {
-        console.log(`✅ Written: ${result.path}`);
-        console.log(`   Strategy: ${options.copytruncate ? 'copytruncate' : 'postrotate + SIGHUP'}`);
-      } else {
-        console.log(`⚠️  Permission denied writing to ${result.path}`);
-        console.log('   Run with sudo, or copy the following to that path:\n');
-        console.log(result.content);
-      }
+      const result = writeLogrotateConfig({ copytruncate: options.copytruncate });
+      console.log(`✅ Generated: ${result.path}`);
+      console.log(`   Strategy: ${options.copytruncate ? 'copytruncate' : 'postrotate + SIGHUP'}`);
+      console.log('');
+      console.log('   To activate, copy to your system logrotate directory:');
+      console.log(`   sudo cp ${result.path} /etc/logrotate.d/swagger-to-wiremock`);
       return;
     }
 
     if (options.status) {
       const enabled = isLogrotateEnabled();
-      const systemConfig = getSystemConfigPath();
-      const hasConfig = existsSync(systemConfig);
       console.log(`Logrotate: ${enabled ? 'enabled' : 'disabled'}`);
       console.log(`Log naming: ${enabled ? 'stable (stw-<port>.log)' : 'timestamped (stw-<port>-<date>-<time>.log)'}`);
-      console.log(`System config: ${hasConfig ? systemConfig : `not found (${systemConfig})`}`);
       return;
     }
 

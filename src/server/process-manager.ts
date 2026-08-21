@@ -3,12 +3,13 @@
  * @description Manages background WireMock server processes — spawning detached,
  *   tracking PIDs in a registry file, health checking, and stopping servers.
  *
- * Registry file: ~/.swagger-to-wiremock/servers.json
+ * Registry file: ~/.swagger-to-wiremock/servers.json  
  */
 
 import { spawn, execSync } from 'child_process';
 import { existsSync, readFileSync, writeFileSync, mkdirSync, openSync } from 'fs';
 import { join } from 'path';
+import { fileURLToPath } from 'url';
 import { homedir } from 'os';
 import type { ServerRegistryEntry } from './types.js';
 
@@ -254,6 +255,69 @@ export function spawnBackground(
     rootDir: meta.rootDir,
     startedAt: new Date().toISOString(),
     ...(meta.logFile ? { logFile: meta.logFile } : {}),
+  });
+
+  return pid;
+}
+
+/**
+ * Resolve the path to the log-forwarder script (bundled alongside cli.js).
+ */
+function resolveForwarderPath(): string {
+  // In ESM, use import.meta.url to find sibling files in dist/
+  const thisFile = fileURLToPath(import.meta.url);
+  const distDir = join(thisFile, '..');
+  // tsup builds log-forwarder.js as a separate entry point
+  const forwarderPath = join(distDir, 'log-forwarder.js');
+  if (!existsSync(forwarderPath)) {
+    throw new Error(`Log forwarder not found at: ${forwarderPath}. Rebuild with: npm run build`);
+  }
+  return forwarderPath;
+}
+
+/**
+ * Spawn a background WireMock process via the log-forwarder Node wrapper.
+ * The forwarder handles SIGHUP (logrotate) and pipes output through a logger.
+ * The PID registered in servers.json is the forwarder's — not WireMock's.
+ *
+ * @param javaCmd - Path to java executable
+ * @param wmArgs - WireMock arguments (everything after `java`)
+ * @param meta - Metadata for registry (port, rootDir, logFile)
+ * @returns The forwarder process PID
+ */
+export function spawnWithForwarder(
+  javaCmd: string,
+  wmArgs: string[],
+  meta: { port: number; rootDir: string; logFile: string },
+): number {
+  const forwarderPath = resolveForwarderPath();
+
+  // Args: <javaCmd> <logFile> <port> <rootDir> -- <wiremock args...>
+  const forwarderArgs = [
+    forwarderPath,
+    javaCmd, meta.logFile, String(meta.port), meta.rootDir,
+    '--',
+    ...wmArgs,
+  ];
+
+  const child = spawn('node', forwarderArgs, {
+    detached: true,
+    stdio: ['ignore', 'ignore', 'ignore'],
+  });
+
+  child.unref();
+
+  const pid = child.pid;
+  if (!pid) {
+    throw new Error('Failed to spawn log-forwarder process — no PID returned');
+  }
+
+  registerServer({
+    port: meta.port,
+    pid,
+    rootDir: meta.rootDir,
+    startedAt: new Date().toISOString(),
+    logFile: meta.logFile,
   });
 
   return pid;

@@ -14,10 +14,10 @@ import type { ServerOptions, ServerProcess } from './types.js';
 
 export type { ServerOptions, ServerProcess } from './types.js';
 export { resolveJarPath } from './jar-resolver.js';
-export { spawnBackground, getServerStatus, stopServer, stopAllServers, isPortOccupied } from './process-manager.js';
+export { spawnBackground, spawnWithForwarder, getServerStatus, stopServer, stopAllServers, isPortOccupied } from './process-manager.js';
 export { validatePortRange, getPortRange, isPortAvailable, findAvailablePort } from './port-utils.js';
 export { SessionLogger, listLogFiles, resolveLogDir, openLogFileForBackground } from './logger.js';
-export { assertUnixPlatform, isLogrotateEnabled, enableLogrotate, disableLogrotate, getSystemConfigPath, generateConfig, writeSystemConfig } from './logrotate.js';
+export { assertUnixPlatform, isLogrotateEnabled, enableLogrotate, disableLogrotate, generateConfig, writeLogrotateConfig } from './logrotate.js';
 
 /**
  * Detect if Java is available on the system.

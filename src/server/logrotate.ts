@@ -75,13 +75,6 @@ export function disableLogrotate(): void {
 
 // ─── Config Generation ───────────────────────────────────────────────────────
 
-/**
- * Get the system logrotate config path.
- */
-export function getSystemConfigPath(): string {
-  return '/etc/logrotate.d/swagger-to-wiremock';
-}
-
 export interface LogrotateInitOptions {
   /** Use copytruncate strategy instead of postrotate+SIGHUP (default: false) */
   copytruncate?: boolean;
@@ -142,26 +135,20 @@ export function generateConfig(options: LogrotateInitOptions = {}): string {
 }
 
 /**
- * Write the logrotate config to the system path.
- * Also enables logrotate mode if not already enabled.
+ * Write the logrotate config to a file in the current working directory.
+ * Also enables logrotate mode if not already enabled.  
  *
- * @returns { written, path, content }
- *   - written=true: file was written successfully
- *   - written=false: permission denied — content should be printed for manual copy
+ * @returns { path, content } — path to the generated file, and its content
  */
-export function writeSystemConfig(options: LogrotateInitOptions = {}): { written: boolean; path: string; content: string } {
+export function writeLogrotateConfig(options: LogrotateInitOptions = {}): { path: string; content: string } {
   const content = generateConfig(options);
-  const configPath = getSystemConfigPath();
+  const outputPath = join(process.cwd(), 'swagger-to-wiremock.logrotate');
 
   // Auto-enable logrotate mode
   if (!isLogrotateEnabled()) {
     enableLogrotate();
   }
 
-  try {
-    writeFileSync(configPath, content, 'utf8');
-    return { written: true, path: configPath, content };
-  } catch {
-    return { written: false, path: configPath, content };
-  }
+  writeFileSync(outputPath, content, 'utf8');
+  return { path: outputPath, content };
 }
