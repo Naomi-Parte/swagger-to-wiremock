@@ -819,6 +819,9 @@ Global config keys (stored in <STW_HOME>/config.json):
   log-dir <path>          Directory for serve session log files
   no-logs <true|false>    Disable session logging entirely
   auto-port <true|false>  Auto-increment port when unavailable (default: true)
+  no-server-path <true|false>       Exclude server URL base path from stubs (default: false)
+  server-index <number>             Index of servers[] entry to use (default: 0)
+  include-server-variables <true|false>  Include server URL variables as regex (default: false)
 `;
 
 const CONFIG_HELP_LOCAL = `
@@ -840,6 +843,9 @@ Local config keys (stored in .stwrc.yaml in project root):
   no-logs <true|false>    Disable session logging entirely
   templated <true|false>  Use WireMock response templating
   dry-run <true|false>    Show what would be generated without writing
+  no-server-path <true|false>       Exclude server URL base path from stubs (default: false)
+  server-index <number>             Index of servers[] entry to use (default: 0)
+  include-server-variables <true|false>  Include server URL variables as regex (default: false)
 `;
 
 const configCmd = program
