@@ -22,10 +22,10 @@ jobs:
       - run: npm ci
 
       - run: npm run lint
-
-      - run: npm run test:run
-
+      
       - run: npm run build
+      
+      - run: npm run test:run
 
       - name: Verify version matches tag
         run: |
