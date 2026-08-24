@@ -17,7 +17,7 @@ import { join, resolve } from 'path';
 import { homedir } from 'os';
 
 /** Known configuration keys and their expected types */
-export type ConfigKey = 'jar' | 'port' | 'output-dir' | 'foreground' | 'log-dir' | 'no-logs' | 'port-range-min' | 'port-range-max' | 'auto-port';
+export type ConfigKey = 'jar' | 'port' | 'output-dir' | 'foreground' | 'log-dir' | 'no-logs' | 'port-range-min' | 'port-range-max' | 'auto-port' | 'no-server-path' | 'server-index' | 'include-server-variables';
 
 /** Configuration object shape */
 export interface GlobalConfig {
@@ -31,10 +31,13 @@ export interface GlobalConfig {
   'auto-port'?: boolean;
   foreground?: boolean;
   logrotate?: boolean;
+  'no-server-path'?: boolean;
+  'server-index'?: number;
+  'include-server-variables'?: boolean;
 }
 
 /** All valid config keys */
-const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir', 'foreground', 'log-dir', 'no-logs', 'port-range-min', 'port-range-max', 'auto-port'];
+const VALID_KEYS: ConfigKey[] = ['jar', 'port', 'output-dir', 'foreground', 'log-dir', 'no-logs', 'port-range-min', 'port-range-max', 'auto-port', 'no-server-path', 'server-index', 'include-server-variables'];
 
 /**
  * Resolve a path to absolute. If already absolute, returns as-is.
@@ -192,6 +195,24 @@ export function setConfig(key: ConfigKey, value: string): void {
       throw new Error('Invalid auto-port value: must be "true" or "false".');
     }
     config['auto-port'] = lower === 'true';
+  } else if (key === 'no-server-path') {
+    const lower = value.toLowerCase();
+    if (lower !== 'true' && lower !== 'false') {
+      throw new Error('Invalid no-server-path value: must be "true" or "false".');
+    }
+    config['no-server-path'] = lower === 'true';
+  } else if (key === 'server-index') {
+    const numValue = parseInt(value, 10);
+    if (Number.isNaN(numValue) || numValue < 0) {
+      throw new Error(`Invalid server-index value: ${value}. Must be a non-negative integer.`);
+    }
+    config['server-index'] = numValue;
+  } else if (key === 'include-server-variables') {
+    const lower = value.toLowerCase();
+    if (lower !== 'true' && lower !== 'false') {
+      throw new Error('Invalid include-server-variables value: must be "true" or "false".');
+    }
+    config['include-server-variables'] = lower === 'true';
   } else {
     (config as Record<string, unknown>)[key] = value;
   }

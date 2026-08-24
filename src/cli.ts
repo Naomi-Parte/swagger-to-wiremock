@@ -370,15 +370,15 @@ program
       log('[info] Transforming to IR...');
       const noServerPath = resolveConfig(
         merged.serverPath === false ? true : undefined,
-        projectConfig as Record<string, unknown>, 'no-server-path', null, false,
+        projectConfig as Record<string, unknown>, 'no-server-path', 'no-server-path', false,
       );
       const serverIndex = resolveConfig(
         merged.serverIndex ? parseInt(merged.serverIndex, 10) : undefined,
-        projectConfig as Record<string, unknown>, 'server-index', null, 0,
+        projectConfig as Record<string, unknown>, 'server-index', 'server-index', 0,
       );
       const includeServerVariables = resolveConfig(
         merged.includeServerVariables,
-        projectConfig as Record<string, unknown>, 'include-server-variables', null, false,
+        projectConfig as Record<string, unknown>, 'include-server-variables', 'include-server-variables', false,
       );
       const records = transformSpec(spec, {
         noServerPath,
@@ -598,13 +598,13 @@ program
           const spec = await parseOpenAPISpec(target, { verbose, quiet });
           // Resolve server path options for serve inline conversion
           const serveNoServerPath = resolveConfig(
-            undefined, serveProjectCfg as Record<string, unknown>, 'no-server-path', null, false,
+            undefined, serveProjectCfg as Record<string, unknown>, 'no-server-path', 'no-server-path', false,
           );
           const serveServerIndex = resolveConfig(
-            undefined, serveProjectCfg as Record<string, unknown>, 'server-index', null, 0,
+            undefined, serveProjectCfg as Record<string, unknown>, 'server-index', 'server-index', 0,
           );
           const serveIncludeServerVars = resolveConfig(
-            undefined, serveProjectCfg as Record<string, unknown>, 'include-server-variables', null, false,
+            undefined, serveProjectCfg as Record<string, unknown>, 'include-server-variables', 'include-server-variables', false,
           );
           let records = transformSpec(spec, {
             noServerPath: serveNoServerPath,
