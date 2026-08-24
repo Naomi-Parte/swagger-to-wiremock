@@ -170,7 +170,6 @@ export class SessionLogger {
       encoding: 'utf8',
       highWaterMark: 0,
     });
-    this.stream.write(`[${new Date().toISOString()}] Log reopened (SIGHUP)\n`);
   }
 }
 

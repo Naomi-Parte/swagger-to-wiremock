@@ -57,7 +57,6 @@ function writeLog(data: string): void {
 function reopen(): void {
   stream.end();
   stream = openLogStream();
-  writeLog(`[${new Date().toISOString()}] Log reopened (SIGHUP)\n`);
 }
 
 // Write header
