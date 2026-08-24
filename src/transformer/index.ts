@@ -10,6 +10,18 @@ import { extractOperationResponses } from './extract-responses.js';
 import { extractRequestBody } from './extract-request-body.js';
 import { extractSecurityMatchers } from './extract-security.js';
 import { extractWireMockExtensions } from './extension-reader.js';
+import { extractServerBasePath } from './extract-server-path.js';
+import type { ExtractServerPathOptions } from './extract-server-path.js';
+
+/**
+ * Options for the transformer
+ */
+export interface TransformOptions {
+  /** Options for server base path extraction */
+  serverPath?: ExtractServerPathOptions;
+  /** If true, skip server path extraction entirely (--no-server-path) */
+  noServerPath?: boolean;
+}
 
 /**
  * Valid HTTP methods in OpenAPI
@@ -59,11 +71,18 @@ function generateId(): string {
  * // }
  * ```
  */
-export function transformSpec(spec: Record<string, unknown>): OperationRecord[] {
+export function transformSpec(spec: Record<string, unknown>, options: TransformOptions = {}): OperationRecord[] {
   const records: OperationRecord[] = [];
   const paths = spec.paths as Record<string, unknown> | undefined;
 
   if (!paths) return records;
+
+  // Extract server base path (unless explicitly disabled)
+  let serverBasePath = '';
+  if (!options.noServerPath) {
+    const serverPathResult = extractServerBasePath(spec, options.serverPath);
+    serverBasePath = serverPathResult.basePath;
+  }
 
   Object.entries(paths).forEach(([path, pathItem]) => {
     const pathItemObj = pathItem as Record<string, unknown>;
@@ -96,6 +115,7 @@ export function transformSpec(spec: Record<string, unknown>): OperationRecord[] 
         const record: OperationRecord = {
           id: generateId(),
           path,
+          serverBasePath: serverBasePath || undefined,
           method: method.toLowerCase(),
           statusCode,
           summary: operation.summary as string | undefined,

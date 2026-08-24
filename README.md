@@ -217,6 +217,67 @@ echo 'export STW_HOME=/opt/stw' >> ~/.bashrc
 
 The directory is created automatically on first use.
 
+## Server Base Path (v2.0)
+
+By default, `stw` extracts the path component from `servers[0].url` in your OpenAPI spec and prepends it to all generated WireMock URL patterns. This ensures stubs match real request paths — critical for enterprise APIs behind API gateways.
+
+```yaml
+# Your spec
+servers:
+  - url: https://cloudapi.example.com/msd/obligations/v1
+paths:
+  /messages:
+    post: ...
+```
+
+```json
+// Generated stub (v2.0)
+{
+  "request": {
+    "method": "POST",
+    "urlPathPattern": "/msd/obligations/v1/messages"
+  }
+}
+```
+
+### Opting out
+
+Use `--no-server-path` to generate stubs using only the path key (v1.x behaviour):
+
+```bash
+stw convert ./api.yaml --no-server-path
+```
+
+Or set in `.stwrc.yaml`:
+```yaml
+no-server-path: true
+```
+
+### Multiple servers
+
+By default, the first server (`servers[0]`) is used. Select a different one with `--server-index`:
+
+```bash
+stw convert ./api.yaml --server-index 1
+```
+
+### Server URL variables
+
+Variable segments (e.g. `{subenv}`) in server URLs are **stripped by default** — only static path segments are included:
+
+```yaml
+servers:
+  - url: https://host/{subenv}/msd/obligations/v1
+# Result: /msd/obligations/v1/messages
+```
+
+Use `--include-server-variables` to include them as regex patterns:
+
+```bash
+stw convert ./api.yaml --include-server-variables
+# Result: /[^/]+/msd/obligations/v1/messages (urlPathPattern with regex)
+```
+
 ## Project Configuration
 
 Teams can commit a `.stwrc.yaml` file to the repo so everyone uses the same defaults — no CLI flags needed.

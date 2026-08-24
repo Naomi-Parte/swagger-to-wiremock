@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.0.0] - 2026-08-24
+
+### ⚠️ BREAKING CHANGE
+
+- **Server base path included by default** — The path component from `servers[0].url` is now prepended to all generated WireMock URL patterns. This fixes a bug where generated stubs did not match actual requests for APIs with base paths in their server URL (e.g. enterprise APIs behind API gateways).
+
+  **Before (v1.x):**
+  ```
+  servers:
+    - url: https://host/msd/obligations/v1
+  paths:
+    /messages: ...
+
+  Generated: urlPathPattern: "/messages"
+  ```
+
+  **After (v2.0):**
+  ```
+  Generated: urlPathPattern: "/msd/obligations/v1/messages"
+  ```
+
+  Use `--no-server-path` or set `no-server-path: true` in `.stwrc.yaml` to restore pre-v2 behaviour.
+
+### Added
+
+- **`--no-server-path` flag** — Opt out of server base path inclusion (restores v1.x behaviour).
+- **`--server-index <N>` flag** — Select which `servers[]` entry to extract the base path from (default: `0`).
+- **`--include-server-variables` flag** — Include server URL variable segments as `[^/]+` regex patterns in generated paths. By default, variable segments (e.g. `{subenv}`) are stripped.
+- **`no-server-path`** project config key — Set in `.stwrc.yaml` to disable server path for a project.
+- **`server-index`** project config key — Set in `.stwrc.yaml` to select a non-default server.
+- **`include-server-variables`** project config key — Set in `.stwrc.yaml` to enable variable regex generation.
+- **`extractServerBasePath()`** — New public API function for programmatic server path extraction.
+
+---
+
 ## [1.2.0] - 2026-08-21
 
 ### Added

@@ -1,0 +1,59 @@
+openapi: "3.0.3"
+info:
+  title: Obligation Management API
+  version: "1.0.0"
+servers:
+  - url: https://cloudapi-sit.ssi.govt.nz/msd/obligationmanagement/obligations/v1
+paths:
+  /messages:
+    post:
+      operationId: postMessage
+      summary: Post a new message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  type: string
+              required:
+                - text
+      responses:
+        "201":
+          description: Message created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  text:
+                    type: string
+  /messages/{messageId}:
+    get:
+      operationId: getMessage
+      summary: Get a message by ID
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Message details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  text:
+                    type: string

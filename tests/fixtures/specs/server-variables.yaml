@@ -1,0 +1,32 @@
+openapi: "3.0.3"
+info:
+  title: Multi-Environment API
+  version: "1.0.0"
+servers:
+  - url: https://cloudapi.ssi.govt.nz/{subenv}/msd/obligations/v1
+    variables:
+      subenv:
+        default: sit
+        enum:
+          - sit
+          - uat
+          - prd
+paths:
+  /messages:
+    get:
+      operationId: listMessages
+      summary: List messages
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    text:
+                      type: string

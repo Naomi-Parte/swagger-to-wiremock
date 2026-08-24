@@ -31,15 +31,34 @@ export interface URLPatternResult {
  */
 export function generateURLPattern(record: OperationRecord): URLPatternResult {
   // No path parameters → exact match
-  if (record.pathParams.length === 0) {
+  if (record.pathParams.length === 0 && !record.serverBasePath) {
     return {
       strategy: 'urlPathEqualTo',
       url: record.path,
     };
   }
 
+  // Prepend server base path if present
+  const basePath = record.serverBasePath || '';
+  const fullPath = basePath + record.path;
+
+  // No path parameters but has server base path
+  if (record.pathParams.length === 0) {
+    // If base path contains regex patterns (from --include-server-variables), use urlPathPattern
+    if (basePath.includes('[^/]+')) {
+      return {
+        strategy: 'urlPathPattern',
+        url: fullPath,
+      };
+    }
+    return {
+      strategy: 'urlPathEqualTo',
+      url: fullPath,
+    };
+  }
+
   // Build regex pattern by replacing {paramName} with format-specific regex
-  let pattern = record.path;
+  let pattern = fullPath;
 
   for (const param of record.pathParams) {
     const regex = getPathParamPattern(param.type, param.format);

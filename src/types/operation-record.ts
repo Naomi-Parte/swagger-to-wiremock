@@ -17,6 +17,9 @@ export interface OperationRecord {
   /** OpenAPI path (e.g., "/pets/{petId}") */
   path: string;
 
+  /** Server base path prepended to the OpenAPI path (e.g., "/msd/obligations/v1") */
+  serverBasePath?: string;
+
   /** HTTP method (lowercase: get, post, put, delete, patch) */
   method: string;
 

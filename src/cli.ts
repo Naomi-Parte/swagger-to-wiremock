@@ -30,7 +30,7 @@ import { initConfig } from './config/init.js';
 import { createStubServerDir } from './server/stub-server.js';
 import { writeLocalConfig, unsetLocalConfig } from './config/local-writer.js';
 
-const version = '1.2.0';
+const version = '2.0.0';
 
 const binName = (() => {
   const raw = basename(process.argv[1] || 'stw').replace(/\.(js|ts|mjs|cjs)$/, '');
@@ -83,6 +83,9 @@ interface ConvertOptions {
   port?: string;
   jar?: string;
   templated?: boolean;
+  serverPath?: boolean;  // Commander handles --no-server-path as serverPath=false
+  serverIndex?: string;
+  includeServerVariables?: boolean;
 }
 
 interface ServeOptions {
@@ -284,6 +287,9 @@ program
   .option('--port <port>', 'Port for WireMock server (default: 8080, used with --serve)')
   .option('--jar <path>', 'Path to WireMock standalone JAR (used with --serve)')
   .option('--templated', 'Use WireMock response templating (Handlebars) to echo request data in responses')
+  .option('--no-server-path', 'Exclude server URL base path from generated URL patterns (pre-v2 behaviour)')
+  .option('--server-index <index>', 'Index of the servers[] entry to use for base path extraction (default: 0)')
+  .option('--include-server-variables', 'Include server URL variables as regex patterns ([^/]+) in generated paths')
   .action(async (input: string, options: ConvertOptions) => {
     if (options.helpExamples) {
       console.log(EXAMPLES);
@@ -362,8 +368,29 @@ program
 
       // Step 2: Transform
       log('[info] Transforming to IR...');
-      const records = transformSpec(spec);
+      const noServerPath = resolveConfig(
+        merged.serverPath === false ? true : undefined,
+        projectConfig as Record<string, unknown>, 'no-server-path', null, false,
+      );
+      const serverIndex = resolveConfig(
+        merged.serverIndex ? parseInt(merged.serverIndex, 10) : undefined,
+        projectConfig as Record<string, unknown>, 'server-index', null, 0,
+      );
+      const includeServerVariables = resolveConfig(
+        merged.includeServerVariables,
+        projectConfig as Record<string, unknown>, 'include-server-variables', null, false,
+      );
+      const records = transformSpec(spec, {
+        noServerPath,
+        serverPath: { serverIndex, includeVariables: includeServerVariables },
+      });
       log(`[info] ${records.length} operations found`);
+
+      // Info log when server base path is detected
+      if (!quiet && records.length > 0 && records[0]?.serverBasePath) {
+        console.log(`[info] Server base path detected: ${records[0].serverBasePath}`);
+        console.log('       Prepending to all generated URL patterns. Use --no-server-path to disable.');
+      }
 
       // Strip security matchers if --no-security
       if (merged.security === false) {
@@ -569,7 +596,20 @@ program
           if (!quiet) console.log('[info] Converting spec → stubs...');
 
           const spec = await parseOpenAPISpec(target, { verbose, quiet });
-          let records = transformSpec(spec);
+          // Resolve server path options for serve inline conversion
+          const serveNoServerPath = resolveConfig(
+            undefined, serveProjectCfg as Record<string, unknown>, 'no-server-path', null, false,
+          );
+          const serveServerIndex = resolveConfig(
+            undefined, serveProjectCfg as Record<string, unknown>, 'server-index', null, 0,
+          );
+          const serveIncludeServerVars = resolveConfig(
+            undefined, serveProjectCfg as Record<string, unknown>, 'include-server-variables', null, false,
+          );
+          let records = transformSpec(spec, {
+            noServerPath: serveNoServerPath,
+            serverPath: { serverIndex: serveServerIndex, includeVariables: serveIncludeServerVars },
+          });
 
           // Strip security matchers if --no-security
           const noSecurity = resolveConfig(
